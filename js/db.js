@@ -18,6 +18,10 @@
     'volleyballLogs'      // REVIEW
   ];
 
+  // Stores that use keyPath 'id' with autoIncrement. put() backfills the
+  // generated id onto the caller's object so it can be updated afterwards.
+  const AUTOINCREMENT_ID_STORES = new Set(FUTURE_STORES);
+
   let dbPromise = null;
 
   function openDB() {
@@ -60,7 +64,12 @@
   function put(storeName, value) {
     return openDB().then((db) => new Promise((resolve, reject) => {
       const req = db.transaction(storeName, 'readwrite').objectStore(storeName).put(value);
-      req.onsuccess = () => resolve(value);
+      req.onsuccess = () => {
+        if (AUTOINCREMENT_ID_STORES.has(storeName) && value && value.id === undefined) {
+          value.id = req.result;
+        }
+        resolve(value);
+      };
       req.onerror = () => reject(req.error);
     }));
   }

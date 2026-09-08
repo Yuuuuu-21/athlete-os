@@ -6,98 +6,59 @@
 (function (global) {
   const DB = global.AthleteDB;
   const App = global.App;
+  const Condition = global.Condition;
   const WORKOUTS = global.Workouts.WORKOUTS;
   const WORKOUT_ORDER = global.Workouts.WORKOUT_ORDER;
 
   const DAY_INDEX = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
-
-  const CONDITION_HELP = {
-    sleep: {
-      title: 'SLEEP',
-      levels: [
-        [5, 'よく眠れた。起きた時かなりスッキリ'],
-        [4, 'だいたい良好。眠気は少ない'],
-        [3, '普通。少し眠い'],
-        [2, '寝不足感が強い'],
-        [1, 'ほとんど眠れなかった、かなり眠い']
-      ]
-    },
-    energy: {
-      title: 'ENERGY',
-      levels: [
-        [5, 'かなり元気。体が軽く、やる気もある'],
-        [4, '普通に元気。問題なくトレーニングできそう'],
-        [3, '少しだるい。でも通常生活は問題ない'],
-        [2, 'かなり疲れている。集中しづらい、体が重い'],
-        [1, '強い疲労感。今日は休みたいレベル']
-      ]
-    },
-    legs: {
-      title: 'LEGS',
-      levels: [
-        [5, '軽い。張りや筋肉痛なし'],
-        [4, '少し張るが問題なし'],
-        [3, '軽い筋肉痛や重さあり'],
-        [2, 'かなり重い、筋肉痛が強い'],
-        [1, '痛みや強い違和感があり、運動したくない']
-      ]
-    }
-  };
-
-  const READINESS_LEVELS = [
-    { min: 12, max: 15, status: 'GREEN', desc: '今日は良い状態です', action: '通常メニューでOK' },
-    { min: 8, max: 11, status: 'YELLOW', desc: '今日は通常より少し軽め', action: '重量・セット数を少し調整' },
-    { min: 3, max: 7, status: 'RED', desc: '今日は疲労が溜まっています', action: '短縮または低負荷を優先' }
-  ];
-
-  function readinessLevelFor(score) {
-    return READINESS_LEVELS.find((l) => score >= l.min && score <= l.max) || READINESS_LEVELS[1];
-  }
 
   const state = {
     condition: { sleep: 3, energy: 3, legs: 3 },
     conditionLogged: false,
     selectedWorkout: 'A',
     selectedDuration: 30,
-    volleyballDay: 'Saturday'
+    volleyballDay: 'Saturday',
+    trainingDoneToday: false,
+    weightLoggedToday: false
   };
+
+  // Body also renders .scale-btn / .help-btn elements for the same
+  // Condition fields, so every query here must stay scoped to Home's
+  // own view — otherwise Home's listeners would also fire on Body's.
+  let homeRoot = null;
 
   // ---------- Persistence ----------
 
   async function loadState() {
-    const [conditionLog, settings] = await Promise.all([
-      DB.get('conditionLogs', App.todayKey()),
-      DB.get('settings', 'app')
+    const [condition, settings, trainingSessions, bodyLogs] = await Promise.all([
+      Condition.loadToday(App.todayKey()),
+      DB.get('settings', 'app'),
+      DB.getAll('trainingSessions'),
+      DB.getAll('bodyLogs')
     ]);
 
-    if (conditionLog) {
-      state.condition.sleep = conditionLog.sleep;
-      state.condition.energy = conditionLog.energy;
-      state.condition.legs = conditionLog.legs;
-      state.conditionLogged = true;
-    }
+    state.condition.sleep = condition.sleep;
+    state.condition.energy = condition.energy;
+    state.condition.legs = condition.legs;
+    state.conditionLogged = condition.logged;
+
     if (settings) {
       if (settings.selectedWorkout) state.selectedWorkout = settings.selectedWorkout;
       if (settings.selectedDuration) state.selectedDuration = settings.selectedDuration;
       if (settings.volleyballDay) state.volleyballDay = settings.volleyballDay;
     }
+
+    const today = App.todayKey();
+    state.trainingDoneToday = trainingSessions.some((s) => s.date === today && s.status !== 'in_progress');
+    state.weightLoggedToday = bodyLogs.some((b) => b.date === today);
   }
 
   function computeReadiness() {
-    const score = state.condition.sleep + state.condition.energy + state.condition.legs;
-    return { score, level: readinessLevelFor(score) };
+    return Condition.computeReadiness(state.condition);
   }
 
   async function saveCondition() {
-    const { score, level } = computeReadiness();
-    await DB.put('conditionLogs', {
-      date: App.todayKey(),
-      sleep: state.condition.sleep,
-      energy: state.condition.energy,
-      legs: state.condition.legs,
-      readinessScore: score,
-      readinessStatus: level.status
-    });
+    await Condition.save(App.todayKey(), state.condition);
     state.conditionLogged = true;
   }
 
@@ -114,7 +75,7 @@
 
   function renderCondition() {
     ['sleep', 'energy', 'legs'].forEach((field) => {
-      const group = document.querySelector(`.scale-buttons[data-field="${field}"]`);
+      const group = homeRoot.querySelector(`.scale-buttons[data-field="${field}"]`);
       if (!group) return;
       group.querySelectorAll('.scale-btn').forEach((btn) => {
         btn.classList.toggle('selected', Number(btn.dataset.value) === state.condition[field]);
@@ -165,12 +126,12 @@
   }
 
   function renderLog() {
-    // Condition wires to real data; Training/Weight/Food stay as
-    // placeholders until their screens exist.
+    // Condition/Training/Weight wire to real data; Food stays a
+    // placeholder until that screen exists.
     const items = [
       { label: 'Condition', done: state.conditionLogged, value: state.conditionLogged ? '✓' : '-' },
-      { label: 'Training', done: false, value: '-' },
-      { label: 'Weight', done: true, value: '✓' },
+      { label: 'Training', done: state.trainingDoneToday, value: state.trainingDoneToday ? '✓' : '-' },
+      { label: 'Weight', done: state.weightLoggedToday, value: state.weightLoggedToday ? '✓' : '-' },
       { label: 'Food', done: false, value: '2 / 4' }
     ];
     document.getElementById('logList').innerHTML = items.map((item) => `
@@ -192,7 +153,7 @@
   // ---------- Events ----------
 
   function openConditionHelp(field) {
-    const data = CONDITION_HELP[field];
+    const data = Condition.HELP[field];
     if (!data) return;
     const rows = data.levels.map(([num, text]) => `
       <div class="help-row">
@@ -204,7 +165,7 @@
   }
 
   function initConditionButtons() {
-    document.querySelectorAll('.scale-btn').forEach((btn) => {
+    homeRoot.querySelectorAll('.scale-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         const field = btn.closest('.scale-buttons').dataset.field;
         state.condition[field] = Number(btn.dataset.value);
@@ -215,7 +176,7 @@
       });
     });
 
-    document.querySelectorAll('.help-btn').forEach((btn) => {
+    homeRoot.querySelectorAll('.help-btn').forEach((btn) => {
       btn.addEventListener('click', () => openConditionHelp(btn.dataset.help));
     });
   }
@@ -255,17 +216,21 @@
   }
 
   function initStartWorkout() {
-    document.getElementById('startWorkoutBtn').addEventListener('click', () => {
-      const w = WORKOUTS[state.selectedWorkout];
-      App.showStub(
-        'TRAINING',
-        'Training screen will be implemented next',
-        `<p class="stub-detail">${w.label} · ${state.selectedDuration} MIN</p>`
-      );
+    document.getElementById('startWorkoutBtn').addEventListener('click', async () => {
+      if (global.Training && global.Training.startFromHome) {
+        await global.Training.startFromHome(state.selectedWorkout);
+      }
+      App.switchToView('training');
     });
   }
 
+  async function refresh() {
+    await loadState();
+    renderAll();
+  }
+
   async function init() {
+    homeRoot = document.getElementById('viewHome');
     await loadState();
     if (!state.conditionLogged) {
       // Seed a neutral default so Readiness and Today's Log have
@@ -279,5 +244,5 @@
     initStartWorkout();
   }
 
-  global.Home = { init };
+  global.Home = { init, refresh };
 })(window);

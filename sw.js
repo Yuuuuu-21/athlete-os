@@ -5,7 +5,7 @@
    change so clients pick up the new versions.
    ========================================================== */
 
-const CACHE_NAME = 'athlete-os-v1';
+const CACHE_NAME = 'athlete-os-v2';
 
 const CORE_ASSETS = [
   './',
@@ -13,9 +13,12 @@ const CORE_ASSETS = [
   './manifest.json',
   './css/styles.css',
   './js/db.js',
+  './js/condition.js',
   './js/workouts.js',
   './js/app.js',
   './js/home.js',
+  './js/training.js',
+  './js/body.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png'

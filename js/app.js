@@ -48,11 +48,6 @@
     });
   }
 
-  function goHome() {
-    showView('home');
-    setActiveNav('home');
-  }
-
   function showStub(title, message, extraHtml, navKey) {
     document.getElementById('stubTitle').textContent = title;
     document.getElementById('stubMessage').textContent = message;
@@ -61,12 +56,33 @@
     showView('stub');
   }
 
+  // Screens with a real implementation are switched to directly and
+  // asked to refresh from IndexedDB (so edits made on another screen —
+  // e.g. Condition on BODY — show up immediately). Anything else still
+  // falls back to the generic "Coming soon" stub.
+  const REAL_VIEWS = ['home', 'training', 'body'];
+
+  function switchToView(view) {
+    if (REAL_VIEWS.includes(view)) {
+      showView(view);
+      setActiveNav(view);
+      const mod = global[view.charAt(0).toUpperCase() + view.slice(1)];
+      if (mod && mod.refresh) mod.refresh();
+    } else {
+      showStub(view.toUpperCase(), 'Coming soon', '', view);
+    }
+  }
+
+  function goHome() {
+    switchToView('home');
+  }
+
   function initNav() {
     document.querySelectorAll('.nav-item').forEach((btn) => {
       btn.addEventListener('click', () => {
         const view = btn.dataset.view;
-        if (view === 'home') {
-          goHome();
+        if (REAL_VIEWS.includes(view)) {
+          switchToView(view);
         } else {
           showStub(btn.dataset.label || view.toUpperCase(), 'Coming soon', '', view);
         }
@@ -127,8 +143,12 @@
     registerServiceWorker();
 
     AthleteDB.init()
-      .then(() => { if (global.Home) global.Home.init(); })
-      .catch((err) => console.error('DB init failed', err));
+      .then(() => Promise.all([
+        global.Home && global.Home.init(),
+        global.Training && global.Training.init(),
+        global.Body && global.Body.init()
+      ]))
+      .catch((err) => console.error('App init failed', err));
   });
 
   global.App = {
@@ -136,6 +156,7 @@
     formatGreetingDate,
     greetingTimeLabel,
     showView,
+    switchToView,
     goHome,
     showStub,
     openSheet,

@@ -130,6 +130,28 @@
 
   </main>
 
+  <!-- ============ TRAINING VIEW ============ -->
+  <main class="view" data-view="training" id="viewTraining" hidden>
+    <header class="topbar">
+      <div class="greeting">
+        <p class="greeting-time">TRAINING</p>
+        <p class="greeting-date">Log today's sets</p>
+      </div>
+    </header>
+    <div id="trainingBody"></div>
+  </main>
+
+  <!-- ============ BODY VIEW ============ -->
+  <main class="view" data-view="body" id="viewBody" hidden>
+    <header class="topbar">
+      <div class="greeting">
+        <p class="greeting-time">BODY</p>
+        <p class="greeting-date">Weight &amp; Condition</p>
+      </div>
+    </header>
+    <div id="bodyContent"></div>
+  </main>
+
   <!-- ============ STUB VIEW (Coming soon / Training placeholder) ============ -->
   <main class="view" data-view="stub" id="viewStub" hidden>
     <header class="topbar">
@@ -177,8 +199,11 @@
 </div>
 
 <script src="js/db.js"></script>
+<script src="js/condition.js"></script>
 <script src="js/workouts.js"></script>
 <script src="js/app.js"></script>
 <script src="js/home.js"></script>
+<script src="js/training.js"></script>
+<script src="js/body.js"></script>
 </body>
 </html>
