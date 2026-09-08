@@ -1,0 +1,571 @@
+/* ==========================================================
+   Athlete OS — Ver1
+   Theme: CALM x ATHLETIC
+   ========================================================== */
+
+:root {
+  --bg: #F6F8FB;
+  --text: #14213D;
+  --text-muted: #6B7280;
+  --cta: #2563EB;
+  --cta-text: #FFFFFF;
+  --accent-red: #EF4444;
+  --green: #22A06B;
+  --yellow: #F59E0B;
+  --red: #DC2626;
+  --card-bg: #FFFFFF;
+  --border: #E5E9F0;
+
+  --gap: 16px;
+  --gap-sm: 12px;
+  --radius: 16px;
+  --pad-card: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  overscroll-behavior-y: none;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+}
+
+.view {
+  padding: 0 16px calc(96px + env(safe-area-inset-bottom)) 16px;
+}
+
+/* ---------- Topbar / Greeting ---------- */
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-top: calc(14px + env(safe-area-inset-top));
+  padding-bottom: 14px;
+}
+
+.greeting-time {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.greeting-date {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.icon-btn:active {
+  background: var(--border);
+}
+
+.stub-back {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cta);
+  padding: 6px 0;
+}
+
+/* ---------- Cards ---------- */
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  margin-bottom: var(--gap);
+  box-shadow: 0 1px 2px rgba(20, 33, 61, 0.04);
+}
+
+.card-title {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.card-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.link-btn {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cta);
+  padding: 4px 6px;
+}
+
+/* ---------- Condition ---------- */
+
+.condition-row {
+  padding: 8px 0;
+}
+
+.condition-row + .condition-row {
+  border-top: 1px solid var(--border);
+}
+
+.condition-label-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.condition-label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.help-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scale-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.scale-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.scale-btn.selected {
+  background: var(--cta);
+  border-color: var(--cta);
+  color: var(--cta-text);
+}
+
+.scale-btn:active {
+  opacity: 0.8;
+}
+
+/* ---------- Readiness ---------- */
+
+.readiness-top {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.readiness-score {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.readiness-badge {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.badge-green { background: rgba(34, 160, 107, 0.12); color: var(--green); }
+.badge-yellow { background: rgba(245, 158, 11, 0.14); color: var(--yellow); }
+.badge-red { background: rgba(220, 38, 38, 0.1); color: var(--red); }
+
+.readiness-desc {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.readiness-action {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+/* ---------- Workout / Focus ---------- */
+
+.workout-name {
+  margin: 2px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.workout-sub {
+  margin: 2px 0 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
+.duration-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.duration-btn {
+  flex: 1;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text);
+}
+
+.duration-btn.active {
+  background: var(--cta);
+  border-color: var(--cta);
+  color: var(--cta-text);
+}
+
+.focus-block {
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.focus-title {
+  margin: 6px 0 2px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.focus-title.accent {
+  color: var(--accent-red);
+}
+
+.focus-desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ---------- Start Workout CTA ---------- */
+
+.start-btn {
+  display: block;
+  width: 100%;
+  height: 56px;
+  border-radius: var(--radius);
+  background: var(--cta);
+  color: var(--cta-text);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin-bottom: var(--gap);
+}
+
+.start-btn:active {
+  opacity: 0.9;
+}
+
+/* ---------- Volleyball strip ---------- */
+
+.volleyball-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: var(--gap);
+  background: rgba(37, 99, 235, 0.06);
+  border-radius: 12px;
+  font-size: 13px;
+}
+
+.volleyball-label {
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--cta);
+}
+
+.volleyball-days {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.volleyball-date {
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+/* ---------- Today's Log ---------- */
+
+.log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.log-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.log-item + .log-item {
+  border-top: 1px solid var(--border);
+}
+
+.log-value {
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.log-value.log-done {
+  color: var(--cta);
+}
+
+.log-value.log-pending {
+  color: #B9C1CE;
+}
+
+/* ---------- Stub / Coming soon ---------- */
+
+.stub-body {
+  padding-top: 40px;
+  text-align: center;
+}
+
+.stub-message {
+  margin: 10px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.stub-detail {
+  margin-top: 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+/* ---------- Bottom nav ---------- */
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border);
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 2px;
+  min-height: 44px;
+  color: #9AA4B2;
+}
+
+.nav-item span {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.nav-item.active {
+  color: var(--cta);
+}
+
+/* ---------- Bottom sheet ---------- */
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 33, 61, 0.32);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 50;
+}
+
+.sheet-overlay[hidden] {
+  display: none;
+}
+
+.sheet-overlay.open {
+  opacity: 1;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 480px;
+  background: var(--card-bg);
+  border-radius: 20px 20px 0 0;
+  padding: 10px 20px calc(24px + env(safe-area-inset-bottom));
+  max-height: 75vh;
+  overflow-y: auto;
+  transform: translateY(100%);
+  transition: transform 0.2s ease;
+}
+
+.sheet-overlay.open .sheet {
+  transform: translateY(0);
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  margin: 6px auto 14px;
+}
+
+.sheet-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.sheet-text {
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.help-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.help-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.help-num {
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.help-text {
+  font-size: 14.5px;
+  padding-top: 3px;
+}
+
+.sheet-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sheet-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  text-align: left;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sheet-option-sub {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.sheet-option.active {
+  border-color: var(--cta);
+  background: rgba(37, 99, 235, 0.06);
+  color: var(--cta);
+}
+
+.sheet-option.active .sheet-option-sub {
+  color: var(--cta);
+}
