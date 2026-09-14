@@ -772,3 +772,94 @@
   border-radius: var(--radius-pill);
   flex: none;
 }
+
+/* ---------- Workout editor ---------- */
+
+.editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.ex-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.ex-row + .ex-row { border-top: 1px solid var(--line); }
+
+.ex-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 11px 0;
+  text-align: left;
+}
+
+/* Reordering by arrows rather than dragging: a drag handle needs a
+   library to behave on touch, and this list is short. */
+.ex-move {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  flex: none;
+}
+
+.ex-move-btn {
+  width: 34px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.ex-move-btn:disabled {
+  opacity: .35;
+  pointer-events: none;
+}
+
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  gap: 8px;
+}
+
+.type-btn {
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  text-align: left;
+  display: grid;
+  gap: 2px;
+}
+
+.type-btn.active {
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 1.5px var(--brand);
+}
+
+.type-name { font-size: 13.5px; font-weight: 700; }
+.type-note { font-size: 10.5px; color: var(--muted); line-height: 1.35; }
+.type-btn.active .type-note { color: var(--brand-ink); }
+
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.check-line input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--brand);
+}

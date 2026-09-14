@@ -39,6 +39,7 @@ const ASSETS = [
   './js/screens/body.js',
   './js/screens/food.js',
   './js/screens/review.js',
+  './js/screens/workout-editor.js',
   './js/screens/settings.js',
   './js/app.js',
   './icons/icon-192.png',

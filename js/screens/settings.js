@@ -43,6 +43,25 @@
       </div>`)}</div>`;
   }
 
+  // 種目やセット数はここから編集する。追加したメニューは曜日の
+  // 割り当てにもそのまま出てくる。
+  function workoutRow(workoutId) {
+    const workout = AOS.workouts.get(workoutId);
+    const count = (workout.exercises || []).length;
+    const tag = AOS.workouts.isCustom(workoutId)
+      ? '<span class="badge badge-brand">追加</span>'
+      : (AOS.workouts.isEdited(workoutId) ? '<span class="badge badge-quiet">変更済み</span>' : '');
+
+    return h`
+      <button class="row" data-edit-workout="${workoutId}">
+        <span class="row-main">
+          <span class="row-title">${workout.label} ${AOS.dom.raw(tag)}</span>
+          <span class="row-sub">${count ? `${count} 種目` : (workout.trainable ? '種目なし' : 'チェックリストのみ')}</span>
+        </span>
+        <span class="row-chevron">${AOS.icons.chevron(16)}</span>
+      </button>`;
+  }
+
   function open() {
     const s = settings();
 
@@ -54,6 +73,12 @@
 
       <p class="card-title" style="margin:20px 0 8px">週のプラン</p>
       <div>${[1, 2, 3, 4, 5, 6, 0].map(planRow)}</div>
+
+      <div class="editor-head" style="margin-top:20px">
+        <span class="card-title">メニューの中身</span>
+        <button class="link-btn" data-add-workout>＋ メニューを追加</button>
+      </div>
+      <div>${AOS.workouts.ORDER.map(workoutRow)}</div>
 
       <p class="card-title" style="margin:20px 0 8px">バレーボールの予定</p>
       <button class="row" data-vb-weekday>
@@ -190,6 +215,11 @@
           open();
         });
       });
+    });
+
+    delegate(el, 'click', '[data-add-workout]', () => AOS.screens.workoutEditor.open(null));
+    delegate(el, 'click', '[data-edit-workout]', (e, target) => {
+      AOS.screens.workoutEditor.open(target.dataset.editWorkout);
     });
 
     delegate(el, 'click', '[data-action="export"]', exportData);

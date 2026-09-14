@@ -53,7 +53,7 @@
 
   function boot() {
     AOS.db.init()
-      .then(() => AOS.store.load())
+      .then(() => Promise.all([AOS.store.load(), AOS.workouts.load()]))
       .then(() => {
         AOS.sheet.init();
         return AOS.router.init();

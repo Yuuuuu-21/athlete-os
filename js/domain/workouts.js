@@ -1,19 +1,48 @@
 /* ==========================================================
    workouts.js — the training catalogue.
 
+   The five built-in workouts below are defaults, not the truth:
+   whatever the user saves into `workoutTemplates` wins. That makes
+   the catalogue editable in-app (add a home-training day, change
+   A's exercises) without any screen needing to know it happened —
+   `WORKOUTS` and `ORDER` are rebuilt in place, so every existing
+   caller keeps working.
+
    Exercise ids keep Ver1's `<workout>-<slug>` shape so sessions
-   already logged still match up as "last time" references.
+   already logged still match up as "last time" references. Ids of
+   custom exercises are generated once and never change, even when
+   the exercise is renamed, so progression keeps following them.
 
    metric decides what a set asks for:
      weight_reps — kg x reps      reps — reps only      time — seconds
    `core30: true` marks the exercises that survive in the
    30-minute version of a session.
+   type drives the automatic adjustments: jump/power get cut when
+   readiness is low, lower triggers the eve-of-match warning, and
+   core/cardio never lose sets.
    ========================================================== */
 
 (function (global) {
   const AOS = global.AOS = global.AOS || {};
 
-  const WORKOUTS = {
+  // Editor vocabulary. `note` explains what the app does with each
+  // choice, because the choice changes behaviour, not just labels.
+  const METRICS = [
+    { id: 'weight_reps', label: '重量 × 回数', note: 'バーベル・ダンベル種目' },
+    { id: 'reps', label: '回数のみ', note: '自重・ジャンプ系' },
+    { id: 'time', label: '時間', note: 'プランク・有酸素' }
+  ];
+
+  const EXERCISE_TYPES = [
+    { id: 'jump', label: 'ジャンプ', note: '疲労時に本数を減らす' },
+    { id: 'power', label: 'パワー', note: '疲労時に本数を減らす' },
+    { id: 'lower', label: '下半身', note: 'バレー前日に警告を出す' },
+    { id: 'upper', label: '上半身', note: '' },
+    { id: 'core', label: '体幹', note: 'セット数は減らさない' },
+    { id: 'cardio', label: '有酸素', note: 'セット数は減らさない' }
+  ];
+
+  const BUILTIN = {
     A: {
       id: 'A',
       label: 'ワークアウト A',
@@ -89,10 +118,157 @@
     }
   };
 
-  const ORDER = ['A', 'B', 'C', 'VOLLEYBALL', 'REST'];
 
+  const BUILTIN_ORDER = ['A', 'B', 'C', 'VOLLEYBALL', 'REST'];
+
+  // Live registry. Screens hold references to these two, so they are
+  // always mutated in place and never reassigned.
+  const WORKOUTS = {};
+  const ORDER = [];
+  let templates = [];
+
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function rebuild() {
+    Object.keys(WORKOUTS).forEach((key) => { delete WORKOUTS[key]; });
+    BUILTIN_ORDER.forEach((id) => { WORKOUTS[id] = clone(BUILTIN[id]); });
+
+    templates.forEach((row) => {
+      const base = BUILTIN[row.workoutId] ? clone(BUILTIN[row.workoutId]) : {};
+      const merged = Object.assign(base, {
+        id: row.workoutId,
+        label: row.label,
+        sub: row.sub || '',
+        trainable: row.trainable !== false,
+        focusTitle: row.focusTitle || '',
+        focusDesc: row.focusDesc || '',
+        exercises: row.exercises || [],
+        templateId: row.id,
+        custom: !BUILTIN[row.workoutId]
+      });
+      // A checklist only belongs to the rest/volleyball defaults; an
+      // edited workout with exercises should never show one too.
+      if (merged.exercises.length) delete merged.checklist;
+      WORKOUTS[row.workoutId] = merged;
+    });
+
+    ORDER.splice(0, ORDER.length);
+    ['A', 'B', 'C'].forEach((id) => ORDER.push(id));
+    templates.forEach((row) => {
+      if (!BUILTIN[row.workoutId]) ORDER.push(row.workoutId);
+    });
+    ORDER.push('VOLLEYBALL', 'REST');
+  }
+
+  function load() {
+    return AOS.db.getAll('workoutTemplates').then((rows) => {
+      templates = rows.slice().sort((a, b) => (a.id || 0) - (b.id || 0));
+      rebuild();
+      return WORKOUTS;
+    });
+  }
+
+  // An id that is no longer defined still appears in old sessions and
+  // in the weekly plan, so it resolves to a readable placeholder
+  // rather than silently turning into a rest day's label.
   function get(id) {
-    return WORKOUTS[id] || WORKOUTS.REST;
+    if (WORKOUTS[id]) return WORKOUTS[id];
+    return {
+      id: id,
+      label: id,
+      sub: '削除されたメニュー',
+      trainable: false,
+      focusTitle: '',
+      focusDesc: '',
+      exercises: [],
+      missing: true
+    };
+  }
+
+  function all() {
+    return ORDER.map(get);
+  }
+
+  function isBuiltin(id) { return !!BUILTIN[id]; }
+  function isEdited(id) { return !!BUILTIN[id] && templates.some((t) => t.workoutId === id); }
+  function isCustom(id) { return !BUILTIN[id] && !!WORKOUTS[id]; }
+  function builtinFor(id) { return BUILTIN[id] ? clone(BUILTIN[id]) : null; }
+  function templateFor(id) { return templates.find((t) => t.workoutId === id) || null; }
+
+  function newWorkoutId() {
+    return 'U' + Date.now().toString(36).toUpperCase();
+  }
+
+  // Generated once at creation and kept through renames, because the
+  // progression logic matches previous sessions on this id.
+  function newExerciseId(workoutId) {
+    return workoutId + '-x' + Math.random().toString(36).slice(2, 7);
+  }
+
+  function newExercise(workoutId) {
+    return {
+      id: newExerciseId(workoutId),
+      name: '',
+      metric: 'weight_reps',
+      type: 'upper',
+      sets: 3,
+      reps: 10,
+      seconds: 45,
+      core30: true,
+      cue: ''
+    };
+  }
+
+  function save(workout) {
+    const row = {
+      workoutId: workout.id,
+      label: workout.label,
+      sub: workout.sub || '',
+      trainable: workout.trainable !== false,
+      focusTitle: workout.focusTitle || '',
+      focusDesc: workout.focusDesc || '',
+      exercises: workout.exercises || []
+    };
+    const existing = templateFor(workout.id);
+    if (existing) row.id = existing.id;
+
+    return AOS.db.put('workoutTemplates', row)
+      .then(load)
+      .then(() => { AOS.store.changed('workouts'); return get(workout.id); });
+  }
+
+  // Built-ins go back to their defaults; custom workouts disappear.
+  function reset(id) {
+    const existing = templateFor(id);
+    if (!existing) return Promise.resolve();
+    return AOS.db.remove('workoutTemplates', existing.id)
+      .then(load)
+      .then(() => AOS.store.changed('workouts'));
+  }
+
+  // Removing a workout the weekly plan still points at would leave
+  // those days resolving to a placeholder, so they fall back to rest.
+  function remove(id) {
+    if (isBuiltin(id)) return reset(id);
+
+    const settings = AOS.store.settings();
+    const planDays = Object.assign({}, settings.planDays);
+    let touched = false;
+    Object.keys(planDays).forEach((dow) => {
+      if (planDays[dow] === id) { planDays[dow] = 'REST'; touched = true; }
+    });
+
+    const overrides = {};
+    Object.keys(settings.dayOverrides || {}).forEach((key) => {
+      if (settings.dayOverrides[key] !== id) overrides[key] = settings.dayOverrides[key];
+    });
+
+    return reset(id).then(() => AOS.store.update({
+      planDays: touched ? planDays : settings.planDays,
+      dayOverrides: overrides
+    }));
   }
 
   function displayName(exercise) {
@@ -103,8 +279,12 @@
   // condition is taken into account.
   function exercisesFor(workoutId, duration) {
     const workout = get(workoutId);
-    if (!workout.exercises) return [];
-    return duration === 30 ? workout.exercises.filter((e) => e.core30) : workout.exercises.slice();
+    if (!workout.exercises || !workout.exercises.length) return [];
+    if (duration !== 30) return workout.exercises.slice();
+    const short = workout.exercises.filter((e) => e.core30);
+    // A workout where nothing is marked for the short version would
+    // otherwise produce an empty session.
+    return short.length ? short : workout.exercises.slice();
   }
 
   // Apply today's readiness. Returns exercises with the set count
@@ -115,11 +295,12 @@
 
     return exercisesFor(workoutId, duration).map((exercise) => {
       const isImpact = exercise.type === 'jump' || exercise.type === 'power';
-      let sets = exercise.sets + (exercise.type === 'core' || exercise.type === 'cardio' ? 0 : setDelta);
+      const spared = exercise.type === 'core' || exercise.type === 'cardio';
+      let sets = Number(exercise.sets) + (spared ? 0 : setDelta);
 
       if (isImpact) {
-        if (jumps === 'minimal') sets = Math.max(1, Math.round(exercise.sets / 2));
-        else if (jumps === 'reduced') sets = Math.max(1, exercise.sets - (setDelta ? 1 : 0));
+        if (jumps === 'minimal') sets = Math.max(1, Math.round(Number(exercise.sets) / 2));
+        else if (jumps === 'reduced') sets = Math.max(1, Number(exercise.sets) - (setDelta ? 1 : 0));
       }
 
       return Object.assign({}, exercise, { sets: Math.max(1, sets) });
@@ -131,5 +312,13 @@
     return `${exercise.sets} × ${exercise.reps}`;
   }
 
-  AOS.workouts = { WORKOUTS, ORDER, get, exercisesFor, prescribe, targetLabel, displayName };
+  rebuild();
+
+  AOS.workouts = {
+    BUILTIN, METRICS, EXERCISE_TYPES, WORKOUTS, ORDER,
+    load, get, all, save, reset, remove,
+    isBuiltin, isEdited, isCustom, builtinFor, templateFor,
+    newWorkoutId, newExercise,
+    exercisesFor, prescribe, targetLabel, displayName
+  };
 })(window);
