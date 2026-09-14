@@ -22,7 +22,7 @@
     bodyLogs: [],
     todayLog: null,
     weight: '',
-    condition: Object.assign({}, AOS.condition.NEUTRAL),
+    condition: Object.assign({}, AOS.condition.EMPTY),
     logged: false,
     tests: {},
     testRows: []
@@ -44,7 +44,7 @@
       state.todayLog = bodyLogs.filter((r) => r.date === state.dateKey).pop() || null;
       state.weight = state.todayLog && state.todayLog.weight !== undefined ? state.todayLog.weight : '';
       state.condition = { sleep: condition.sleep, energy: condition.energy, legs: condition.legs };
-      state.logged = condition.logged;
+      state.logged = condition.complete;
       state.testRows = testRows;
       state.tests = AOS.stats.testSummary(testRows);
     });
@@ -199,9 +199,11 @@
 
   function bind(root) {
     const unbinds = [];
+    let edited = false;
 
     unbinds.push.apply(unbinds, W.bindSteppers(root, (name, value, el, immediate) => {
       if (name !== 'weight') return;
+      edited = true;
       state.weight = value;
       const display = root.querySelector('.weight-num');
       if (display) display.textContent = value === '' ? '—' : num(value);
@@ -226,8 +228,9 @@
       openTestSheet(target.dataset.test);
     }));
 
-    // Leaving the screen mid-edit must not drop the typed weight.
-    unbinds.push(() => saveWeight.flush(state.weight));
+    // Leaving the screen mid-edit must not drop the typed weight —
+    // but simply visiting BODY must not create an empty row either.
+    unbinds.push(() => { if (edited) saveWeight.flush(state.weight); });
 
     return unbinds;
   }

@@ -28,6 +28,21 @@
       </button>`;
   }
 
+  function scheduleList() {
+    const upcoming = AOS.plan.upcomingDates();
+    if (!upcoming.length) {
+      return h`<p class="meal-empty">予定の日付はまだありません</p>`;
+    }
+    return h`<div>${upcoming.map((dateKey) => h`
+      <div class="row">
+        <span class="row-main">
+          <span class="row-title">${dates.formatJP(dateKey)}</span>
+          <span class="row-sub">${dates.diffDays(dates.today(), dateKey) === 0 ? '今日' : `あと ${dates.diffDays(dates.today(), dateKey)} 日`}</span>
+        </span>
+        <button class="meal-item-del" data-del-vb-date="${dateKey}" aria-label="削除">${AOS.icons.trash(16)}</button>
+      </div>`)}</div>`;
+  }
+
   function open() {
     const s = settings();
 
@@ -40,8 +55,24 @@
       <p class="card-title" style="margin:20px 0 8px">週のプラン</p>
       <div>${[1, 2, 3, 4, 5, 6, 0].map(planRow)}</div>
 
-      <p class="card-title" style="margin:20px 0 8px">バレーの曜日</p>
-      ${W.segmented('vbDay', [0, 1, 2, 3, 4, 5, 6].map((dow) => ({ value: dow, label: dates.WD_JP[dow] })), s.volleyballDow)}
+      <p class="card-title" style="margin:20px 0 8px">バレーボールの予定</p>
+      <button class="row" data-vb-weekday>
+        <span class="row-main">
+          <span class="row-title">毎週の曜日</span>
+          <span class="row-sub">単発の予定だけなら「設定なし」</span>
+        </span>
+        <span class="row-value">${Number(s.volleyballDow) >= 0 ? `${dates.WD_JP[s.volleyballDow]}曜日` : '設定なし'}</span>
+        <span class="row-chevron">${AOS.icons.chevron(16)}</span>
+      </button>
+
+      <div class="field" style="margin-top:14px">
+        <span class="field-label">日付を追加（試合・臨時練習）</span>
+        <div class="date-add">
+          <input class="input" type="date" data-vb-date-input value="${AOS.plan.volleyball() ? AOS.plan.volleyball().dateKey : dates.today()}">
+          <button class="btn btn-soft btn-sm" data-add-vb-date>追加</button>
+        </div>
+      </div>
+      ${scheduleList()}
 
       <p class="card-title" style="margin:20px 0 8px">トレーニング</p>
       ${W.segmented('duration', [{ value: 30, label: '30分' }, { value: 60, label: '60分' }], s.duration)}
@@ -92,27 +123,57 @@
       AOS.store.update(patch);
     });
 
-    W.bindSegmented(el, 'vbDay', (value) => {
-      const dow = Number(value);
-      const planDays = Object.assign({}, settings().planDays);
-      // Move volleyball to the new day and free the old one.
-      Object.keys(planDays).forEach((key) => {
-        if (planDays[key] === 'VOLLEYBALL') planDays[key] = 'REST';
+    delegate(el, 'click', '[data-vb-weekday]', () => {
+      const current = Number(settings().volleyballDow);
+      const options = [0, 1, 2, 3, 4, 5, 6].map((dow) => ({
+        id: String(dow),
+        title: `${dates.WD_JP[dow]}曜日`,
+        active: current === dow
+      })).concat([{ id: '-1', title: '設定なし', sub: '単発の予定だけで管理する', active: current < 0 }]);
+
+      AOS.sheet.choose('毎週のバレーの曜日', options, (id) => {
+        const dow = Number(id);
+        const planDays = Object.assign({}, settings().planDays);
+        // Free the old recurring day before claiming the new one.
+        Object.keys(planDays).forEach((key) => {
+          if (planDays[key] === 'VOLLEYBALL') planDays[key] = 'REST';
+        });
+        if (dow >= 0) planDays[dow] = 'VOLLEYBALL';
+
+        AOS.store.update({ volleyballDow: dow, planDays }).then(() => {
+          AOS.router.rerender();
+          open();
+        });
       });
-      planDays[dow] = 'VOLLEYBALL';
-      AOS.store.update({ volleyballDow: dow, planDays }).then(() => {
-        AOS.sheet.close();
+    });
+
+    delegate(el, 'click', '[data-add-vb-date]', () => {
+      const input = el.querySelector('[data-vb-date-input]');
+      const value = input && input.value;
+      if (!value) {
+        toast('日付を選んでください');
+        return;
+      }
+      AOS.plan.addDate(value).then(() => {
+        toast(`${dates.formatJP(value)} を追加しました`);
         AOS.router.rerender();
-        toast('バレーの曜日を変更しました');
+        open();
+      });
+    });
+
+    delegate(el, 'click', '[data-del-vb-date]', (e, target) => {
+      AOS.plan.removeDate(target.dataset.delVbDate).then(() => {
+        AOS.router.rerender();
+        open();
       });
     });
 
     W.bindSegmented(el, 'duration', (value) => AOS.store.update({ duration: Number(value) }));
     W.bindSegmented(el, 'theme', (value) => AOS.store.update({ theme: value }));
 
-    delegate(el, 'input', '[data-field="name"]', (e, target) => {
-      AOS.store.update({ name: target.value.trim() });
-    });
+    // One write per pause, not one per keystroke.
+    const saveName = AOS.dom.debounce((value) => AOS.store.update({ name: value }), 500);
+    delegate(el, 'input', '[data-field="name"]', (e, target) => saveName(target.value.trim()));
 
     delegate(el, 'click', '[data-plan-day]', (e, target) => {
       const dow = Number(target.dataset.planDay);

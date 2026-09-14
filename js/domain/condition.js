@@ -67,7 +67,22 @@
     }
   ];
 
-  const NEUTRAL = { sleep: 3, energy: 3, legs: 3 };
+  // Nothing is chosen until the user chooses it. A pre-filled 3
+  // would be indistinguishable from a real answer, and would quietly
+  // feed a made-up readiness score into today's prescription.
+  const EMPTY = { sleep: null, energy: null, legs: null };
+
+  function isSet(value) {
+    return value !== null && value !== undefined && value !== '' && !Number.isNaN(Number(value));
+  }
+
+  function filledCount(condition) {
+    return FIELDS.filter((f) => isSet(condition[f.id])).length;
+  }
+
+  function isComplete(condition) {
+    return filledCount(condition) === FIELDS.length;
+  }
 
   function levelFor(score) {
     return LEVELS.find((l) => score >= l.min && score <= l.max) || LEVELS[1];
@@ -77,7 +92,24 @@
     return Number(condition.sleep) + Number(condition.energy) + Number(condition.legs);
   }
 
+  // Until all three are answered there is no score and no adjustment —
+  // the caller gets neutral values plus `complete: false` to render.
   function evaluate(condition) {
+    if (!isComplete(condition)) {
+      return {
+        complete: false,
+        filled: filledCount(condition),
+        remaining: FIELDS.length - filledCount(condition),
+        score: null,
+        max: 15,
+        level: null,
+        warnings: [],
+        jumps: 'full',
+        loadFactor: 1,
+        setDelta: 0
+      };
+    }
+
     const total = score(condition);
     const level = levelFor(total);
 
@@ -89,6 +121,9 @@
     if (Number(condition.sleep) <= 2) warnings.push('睡眠不足。神経系が上がりにくいのでMAX更新は狙わない。');
 
     return {
+      complete: true,
+      filled: FIELDS.length,
+      remaining: 0,
       score: total,
       max: 15,
       level,
@@ -108,27 +143,28 @@
 
   function load(dateKey) {
     return db.get('conditionLogs', dateKey).then((record) => {
-      if (!record) return Object.assign({ logged: false }, NEUTRAL);
-      return {
-        logged: true,
-        sleep: record.sleep,
-        energy: record.energy,
-        legs: record.legs,
-        note: record.note || ''
+      if (!record) return Object.assign({ logged: false, complete: false }, EMPTY);
+      const values = {
+        sleep: isSet(record.sleep) ? Number(record.sleep) : null,
+        energy: isSet(record.energy) ? Number(record.energy) : null,
+        legs: isSet(record.legs) ? Number(record.legs) : null
       };
+      return Object.assign({ logged: true, complete: isComplete(values), note: record.note || '' }, values);
     });
   }
 
+  // Partial answers are saved too: tapping one of the three and
+  // leaving the screen shouldn't throw that tap away.
   function save(dateKey, condition) {
     const result = evaluate(condition);
     const record = {
       date: dateKey,
-      sleep: Number(condition.sleep),
-      energy: Number(condition.energy),
-      legs: Number(condition.legs),
+      sleep: isSet(condition.sleep) ? Number(condition.sleep) : null,
+      energy: isSet(condition.energy) ? Number(condition.energy) : null,
+      legs: isSet(condition.legs) ? Number(condition.legs) : null,
       note: condition.note || '',
-      readinessScore: result.score,
-      readinessStatus: result.level.status
+      readinessScore: result.complete ? result.score : null,
+      readinessStatus: result.complete ? result.level.status : null
     };
     return db.put('conditionLogs', record).then(() => {
       AOS.store.changed('condition');
@@ -136,5 +172,9 @@
     });
   }
 
-  AOS.condition = { FIELDS, HELP, LEVELS, NEUTRAL, evaluate, score, levelFor, hintFor, load, save };
+  AOS.condition = {
+    FIELDS, HELP, LEVELS, EMPTY,
+    isSet, isComplete, filledCount,
+    evaluate, score, levelFor, hintFor, load, save
+  };
 })(window);

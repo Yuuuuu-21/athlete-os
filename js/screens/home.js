@@ -14,7 +14,7 @@
 
   const state = {
     dateKey: dates.today(),
-    condition: Object.assign({}, AOS.condition.NEUTRAL),
+    condition: Object.assign({}, AOS.condition.EMPTY),
     logged: false,
     adjust: null,
     workoutId: 'REST',
@@ -39,7 +39,7 @@
       AOS.nutrition.load(state.dateKey),
       AOS.db.getAll('conditionLogs')
     ]).then(([condition, sessions, bodyLog, meals, conditionRows]) => {
-      state.logged = condition.logged;
+      state.logged = condition.complete;
       state.condition = { sleep: condition.sleep, energy: condition.energy, legs: condition.legs };
       state.adjust = AOS.condition.evaluate(state.condition);
       state.session = sessions.find((s) => s.status === 'in_progress') || sessions[0] || null;
@@ -49,11 +49,10 @@
     });
   }
 
-  // Without a rating there is nothing to adjust from, so the plan
-  // is shown as-prescribed rather than guessed at.
+  // Without all three ratings there is nothing to adjust from, and
+  // `evaluate` already returns neutral values in that case.
   function effectiveAdjust() {
-    if (state.logged) return state.adjust;
-    return { loadFactor: 1, setDelta: 0, jumps: 'full', score: null, level: null, warnings: [] };
+    return state.adjust;
   }
 
   // ---------- pieces ----------
@@ -61,15 +60,20 @@
   function readinessCard() {
     const workout = AOS.workouts.get(state.workoutId);
 
-    if (!state.logged) {
+    if (!state.adjust.complete) {
+      const filled = state.adjust.filled;
       return W.card({
         title: 'READINESS',
         body: h`
           <div class="hero">
-            ${W.ring(0, 15, 'line-strong', '未記録')}
+            ${W.ring(0, 15, 'line-strong', filled ? `${filled} / 3` : '未記録')}
             <div class="hero-main">
               <p class="hero-status">今朝の状態は？</p>
-              <p class="hero-desc">3つ選ぶだけ。今日のメニューの重さとセット数が、その場で決まる。</p>
+              <p class="hero-desc">
+                ${filled
+                  ? `あと ${state.adjust.remaining} つ選ぶと、今日のメニューが決まる。`
+                  : '3つ選ぶだけ。今日のメニューの重さとセット数が、その場で決まる。'}
+              </p>
             </div>
           </div>
         `
@@ -97,7 +101,7 @@
   function conditionCard() {
     return W.card({
       title: "TODAY'S CONDITION",
-      action: state.logged ? h`<span class="badge badge-quiet">記録済み</span>` : '',
+      action: state.adjust.complete ? h`<span class="badge badge-quiet">記録済み</span>` : '',
       body: h`<div>${W.conditionScales(state.condition)}</div>`
     });
   }
@@ -111,7 +115,7 @@
       ? AOS.workouts.prescribe(workout.id, duration, adjust)
       : [];
 
-    const adjustLine = state.logged && workout.trainable && adjust.level
+    const adjustLine = adjust.complete && workout.trainable && adjust.level
       ? h`<div class="plan-adjust ${adjust.level.tone}">${AOS.icons.spark(16)}<span>${adjust.level.prescription}</span></div>`
       : '';
 
@@ -173,14 +177,27 @@
 
   function volleyballStrip() {
     const vb = AOS.plan.volleyball(state.dateKey);
+
+    if (!vb) {
+      return h`
+        <button class="vb-strip vb-strip-empty" data-action="settings" style="margin-top:var(--gap)">
+          <span>
+            <span class="vb-label">VOLLEYBALL</span>
+            <span class="vb-days">予定を入れる</span>
+          </span>
+          <span class="vb-when">設定 ›</span>
+        </button>
+      `;
+    }
+
     return h`
-      <div class="vb-strip" style="margin-top:var(--gap)">
-        <div>
-          <p class="vb-label">VOLLEYBALL</p>
-          <p class="vb-days">${vb.label}</p>
-        </div>
-        <p class="vb-when">${vb.when}</p>
-      </div>
+      <button class="vb-strip" data-action="settings" style="margin-top:var(--gap)">
+        <span>
+          <span class="vb-label">VOLLEYBALL</span>
+          <span class="vb-days">${vb.label}</span>
+        </span>
+        <span class="vb-when">${vb.when}${vb.fromSchedule ? '' : ' · 毎週'}</span>
+      </button>
     `;
   }
 
@@ -192,8 +209,10 @@
     const items = [
       {
         label: 'コンディション',
-        done: state.logged,
-        value: state.logged ? `${state.adjust.score} / 15` : '未記録',
+        done: state.adjust.complete,
+        value: state.adjust.complete
+          ? `${state.adjust.score} / 15`
+          : (state.adjust.filled ? `${state.adjust.filled} / 3` : '未記録'),
         go: null
       },
       {

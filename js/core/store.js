@@ -18,7 +18,8 @@
     goalWeightKg: '',
     proteinPerKg: 1.8,
     waterGoal: 8,
-    volleyballDow: 6,          // 0=Sun … 6=Sat
+    volleyballDow: 6,          // 0=Sun … 6=Sat, -1 = no recurring day
+    volleyballDates: [],       // explicit "YYYY-MM-DD" practices and matches
     duration: 60,              // 30 | 60 minutes
     restSeconds: 90,
     theme: 'system',           // system | light | dark
@@ -58,6 +59,7 @@
     const next = Object.assign({}, DEFAULTS, record);
     next.planDays = Object.assign({}, DEFAULTS.planDays, record.planDays);
     next.dayOverrides = Object.assign({}, record.dayOverrides);
+    next.volleyballDates = Array.isArray(record.volleyballDates) ? record.volleyballDates.slice() : [];
 
     if (record.selectedDuration && !record.duration) next.duration = record.selectedDuration;
     if (record.volleyballDay && record.volleyballDow === undefined) {

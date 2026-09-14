@@ -114,14 +114,23 @@
 
   function waterCard() {
     const goal = Number(settings().waterGoal) || 8;
+    const over = Math.max(0, state.water - goal);
+    // Drinking more than the goal is a good thing, so the row keeps
+    // growing past it instead of capping at the last dot.
+    const shown = Math.max(goal, state.water);
+
     const dots = [];
-    for (let i = 1; i <= goal; i++) {
-      dots.push(h`<button type="button" class="water-dot ${i <= state.water ? 'filled' : ''}" data-water="${i}" aria-label="${i}杯目"></button>`);
+    for (let i = 1; i <= shown; i++) {
+      dots.push(h`
+        <button type="button" aria-label="${i}杯目"
+                class="water-dot ${i <= state.water ? 'filled' : ''} ${i > goal ? 'extra' : ''}"
+                data-water="${i}"></button>`);
     }
+    dots.push(h`<button type="button" class="water-dot water-add" data-water-add aria-label="1杯追加">＋</button>`);
 
     return W.card({
       title: 'WATER',
-      action: h`<span class="card-title">${state.water} / ${goal} 杯</span>`,
+      action: h`<span class="card-title">${state.water} / ${goal} 杯${over ? ` (+${over})` : ''}</span>`,
       body: h`<div class="water-dots">${dots}</div>`
     });
   }
@@ -197,6 +206,13 @@
     });
   }
 
+  function setWater(count) {
+    const next = Math.max(0, count);
+    state.water = next;
+    AOS.dom.haptic(6);
+    return AOS.stats.saveBodyLog(state.dateKey, { water: next }).then(() => AOS.router.rerender());
+  }
+
   // ---------- screen ----------
 
   function render() {
@@ -225,11 +241,10 @@
     unbinds.push(delegate(root, 'click', '[data-water]', (e, target) => {
       const tapped = Number(target.dataset.water);
       // Tapping the current last dot clears it, so an accidental tap is undoable.
-      const next = tapped === state.water ? tapped - 1 : tapped;
-      state.water = next;
-      AOS.dom.haptic(6);
-      AOS.stats.saveBodyLog(state.dateKey, { water: next }).then(() => AOS.router.rerender());
+      setWater(tapped === state.water ? tapped - 1 : tapped);
     }));
+
+    unbinds.push(delegate(root, 'click', '[data-water-add]', () => setWater(state.water + 1)));
 
     unbinds.push(delegate(root, 'click', '[data-action]', (e, target) => {
       const action = target.dataset.action;

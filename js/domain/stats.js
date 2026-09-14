@@ -202,7 +202,10 @@
   // Consecutive days ending today with at least a condition entry.
   function streak(conditionRows) {
     const logged = {};
-    conditionRows.forEach((r) => { logged[r.date] = true; });
+    // A half-filled day doesn't count towards the streak.
+    conditionRows.forEach((r) => {
+      if (r.readinessScore !== null && r.readinessScore !== undefined) logged[r.date] = true;
+    });
     let count = 0;
     let cursor = dates.today();
     // Today not being logged yet shouldn't zero out a real streak.

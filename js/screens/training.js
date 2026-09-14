@@ -64,9 +64,9 @@
       if (!workout.trainable) return null;
 
       return AOS.condition.load(dateKey).then((condition) => {
-        const adjust = condition.logged
-          ? AOS.condition.evaluate(condition)
-          : { loadFactor: 1, setDelta: 0, jumps: 'full', score: null };
+        // evaluate() returns neutral values when the rating is
+        // incomplete, so an unlogged morning simply gets the plain plan.
+        const adjust = AOS.condition.evaluate(condition);
         const prescribed = AOS.workouts.prescribe(workoutId, settings().duration, adjust);
 
         return AOS.sessions.lastFor(workoutId, null).then((last) => {

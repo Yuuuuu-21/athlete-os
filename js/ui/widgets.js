@@ -105,7 +105,8 @@
         </div>
         <div class="scale-btns" data-scale="${field}">
           ${[1, 2, 3, 4, 5].map((n) => h`
-            <button type="button" class="scale-btn ${Number(value) === n ? 'selected' : ''}" data-value="${n}">${n}</button>
+            <button type="button" class="scale-btn ${AOS.condition.isSet(value) && Number(value) === n ? 'selected' : ''}"
+                    data-value="${n}">${n}</button>
           `)}
         </div>
       </div>
