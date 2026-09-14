@@ -1,13 +1,14 @@
 {
-  "name": "Athlete OS",
+  "name": "Athlete OS — アスリート化計画",
   "short_name": "Athlete OS",
-  "description": "Personal training and nutrition tracker",
+  "description": "コンディションから今日のトレーニングを決め、記録し、伸びを確認する個人用アプリ",
+  "lang": "ja",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F6F8FB",
-  "theme_color": "#F6F8FB",
+  "background_color": "#F3F6FB",
+  "theme_color": "#F3F6FB",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -20,6 +21,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

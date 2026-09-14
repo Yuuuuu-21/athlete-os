@@ -1,0 +1,122 @@
+/* ==========================================================
+   tokens.css — Athlete OS design tokens
+   Theme: CALM x ATHLETIC
+   Light is the base palette. Dark redefines only the values,
+   both for the system preference and for an explicit choice.
+   ========================================================== */
+
+:root {
+  color-scheme: light dark;
+
+  /* --- surfaces --- */
+  --bg: #F3F6FB;
+  --surface: #FFFFFF;
+  --surface-2: #EDF1F8;
+  --surface-3: #E2E9F4;
+
+  /* --- ink --- */
+  --text: #121B31;
+  --text-2: #46536E;
+  --muted: #76839C;
+
+  /* --- lines --- */
+  --line: #E2E8F2;
+  --line-strong: #CDD7E7;
+
+  /* --- brand / status --- */
+  --brand: #2563EB;
+  --brand-ink: #1D4ED8;
+  --brand-soft: #E7EEFF;
+  --on-brand: #FFFFFF;
+
+  --green: #0E9C62;
+  --green-soft: #E1F4EB;
+  --amber: #B97505;
+  --amber-soft: #FBEFD9;
+  --red: #D02D3E;
+  --red-soft: #FBE6E8;
+
+  /* --- effects --- */
+  --shadow-1: 0 1px 2px rgba(18, 27, 49, .05), 0 2px 6px rgba(18, 27, 49, .04);
+  --shadow-2: 0 10px 34px rgba(18, 27, 49, .14);
+  --ring: 0 0 0 3px rgba(37, 99, 235, .28);
+
+  /* --- geometry --- */
+  --gap: 14px;
+  --gap-lg: 18px;
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+  --pad: 16px;
+  --tap: 44px;
+  --maxw: 520px;
+
+  /* --- type --- */
+  --font: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Segoe UI", system-ui, sans-serif;
+  /* Rounded numerals, with the Japanese faces kept in the stack:
+     SF Pro Rounded has no CJK, and labels here mix the two. */
+  --font-num: ui-rounded, -apple-system, BlinkMacSystemFont, "SF Pro Rounded",
+              "Hiragino Sans", "Noto Sans JP", "Segoe UI", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0B1120;
+    --surface: #141C2E;
+    --surface-2: #1B2437;
+    --surface-3: #232E44;
+
+    --text: #E9EEF9;
+    --text-2: #B2BFD6;
+    --muted: #8492AD;
+
+    --line: #26314A;
+    --line-strong: #33415E;
+
+    --brand: #5B92FF;
+    --brand-ink: #7EAAFF;
+    --brand-soft: #1B2A4A;
+    --on-brand: #0B1120;
+
+    --green: #35C48D;
+    --green-soft: #12311F;
+    --amber: #E8A83C;
+    --amber-soft: #35270F;
+    --red: #F2697A;
+    --red-soft: #37161C;
+
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, .40);
+    --shadow-2: 0 10px 34px rgba(0, 0, 0, .55);
+    --ring: 0 0 0 3px rgba(91, 146, 255, .35);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0B1120;
+  --surface: #141C2E;
+  --surface-2: #1B2437;
+  --surface-3: #232E44;
+
+  --text: #E9EEF9;
+  --text-2: #B2BFD6;
+  --muted: #8492AD;
+
+  --line: #26314A;
+  --line-strong: #33415E;
+
+  --brand: #5B92FF;
+  --brand-ink: #7EAAFF;
+  --brand-soft: #1B2A4A;
+  --on-brand: #0B1120;
+
+  --green: #35C48D;
+  --green-soft: #12311F;
+  --amber: #E8A83C;
+  --amber-soft: #35270F;
+  --red: #F2697A;
+  --red-soft: #37161C;
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .40);
+  --shadow-2: 0 10px 34px rgba(0, 0, 0, .55);
+  --ring: 0 0 0 3px rgba(91, 146, 255, .35);
+}

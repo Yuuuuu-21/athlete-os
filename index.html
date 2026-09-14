@@ -3,207 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Athlete OS</title>
-<meta name="theme-color" content="#F6F8FB">
+<title>Athlete OS — アスリート化計画</title>
+<meta name="description" content="週末バレーボールのための、コンディション起点のトレーニング記録">
+<meta name="theme-color" content="#F3F6FB" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B1120" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Athlete OS">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/styles.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/screens.css">
 </head>
 <body>
 <div id="app">
+  <header class="topbar" id="topbar"></header>
+  <main class="screen" id="screen" tabindex="-1"></main>
+  <nav class="nav" id="nav" aria-label="メインナビゲーション"></nav>
 
-  <!-- ============ HOME VIEW ============ -->
-  <main class="view" data-view="home" id="viewHome">
-
-    <!-- 1. Greeting + settings -->
-    <header class="topbar">
-      <div class="greeting">
-        <p class="greeting-time" id="greetingTime">GOOD MORNING</p>
-        <p class="greeting-date" id="greetingDate">Tuesday, Sep 8</p>
-      </div>
-      <button class="icon-btn" id="settingsBtn" aria-label="Settings">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="#14213D" stroke-width="1.6"/>
-          <path d="M19.4 13a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V19a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 13a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 7a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 2.6a1.65 1.65 0 0 0 1-1.51V1a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 7a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" stroke="#14213D" stroke-width="1.2" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </header>
-
-    <!-- 2. Today's Condition -->
-    <section class="card">
-      <h2 class="card-title">TODAY'S CONDITION</h2>
-
-      <div class="condition-row" data-field="sleep">
-        <div class="condition-label-row">
-          <span class="condition-label">Sleep</span>
-          <button class="help-btn" data-help="sleep" aria-label="Sleep guide">?</button>
-        </div>
-        <div class="scale-buttons" data-field="sleep">
-          <button class="scale-btn" data-value="1">1</button>
-          <button class="scale-btn" data-value="2">2</button>
-          <button class="scale-btn" data-value="3">3</button>
-          <button class="scale-btn" data-value="4">4</button>
-          <button class="scale-btn" data-value="5">5</button>
-        </div>
-      </div>
-
-      <div class="condition-row" data-field="energy">
-        <div class="condition-label-row">
-          <span class="condition-label">Energy</span>
-          <button class="help-btn" data-help="energy" aria-label="Energy guide">?</button>
-        </div>
-        <div class="scale-buttons" data-field="energy">
-          <button class="scale-btn" data-value="1">1</button>
-          <button class="scale-btn" data-value="2">2</button>
-          <button class="scale-btn" data-value="3">3</button>
-          <button class="scale-btn" data-value="4">4</button>
-          <button class="scale-btn" data-value="5">5</button>
-        </div>
-      </div>
-
-      <div class="condition-row" data-field="legs">
-        <div class="condition-label-row">
-          <span class="condition-label">Legs</span>
-          <button class="help-btn" data-help="legs" aria-label="Legs guide">?</button>
-        </div>
-        <div class="scale-buttons" data-field="legs">
-          <button class="scale-btn" data-value="1">1</button>
-          <button class="scale-btn" data-value="2">2</button>
-          <button class="scale-btn" data-value="3">3</button>
-          <button class="scale-btn" data-value="4">4</button>
-          <button class="scale-btn" data-value="5">5</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3. Readiness -->
-    <section class="card readiness-card">
-      <h2 class="card-title">READINESS</h2>
-      <div class="readiness-top">
-        <span class="readiness-score" id="readinessScore">9 / 15</span>
-        <span class="readiness-badge badge-yellow" id="readinessBadge">YELLOW</span>
-      </div>
-      <p class="readiness-desc" id="readinessDesc">今日は通常より少し軽め</p>
-      <p class="readiness-action" id="readinessAction">重量・セット数を少し調整</p>
-    </section>
-
-    <!-- 4-6. Today's Workout / Duration / Focus -->
-    <section class="card">
-      <div class="card-header-row">
-        <span class="eyebrow">TODAY</span>
-        <button class="link-btn" id="changeWorkoutBtn">Change</button>
-      </div>
-      <h2 class="workout-name" id="workoutName">Workout A</h2>
-      <p class="workout-sub" id="workoutSub">LOWER + JUMP</p>
-
-      <div class="duration-toggle">
-        <button class="duration-btn" data-duration="30">30 MIN</button>
-        <button class="duration-btn" data-duration="60">60 MIN</button>
-      </div>
-
-      <div class="focus-block">
-        <span class="eyebrow">TODAY'S FOCUS</span>
-        <p class="focus-title" id="focusTitle">JUMP QUALITY</p>
-        <p class="focus-desc" id="focusDesc">毎回きれいに高く跳ぶ</p>
-      </div>
-    </section>
-
-    <!-- 7. START WORKOUT -->
-    <button class="start-btn" id="startWorkoutBtn">START WORKOUT</button>
-
-    <!-- 8. Volleyball countdown -->
-    <section class="volleyball-strip">
-      <span class="volleyball-label">VOLLEYBALL</span>
-      <span class="volleyball-days" id="volleyballDays">3 DAYS TO GO</span>
-      <span class="volleyball-date" id="volleyballDate">Saturday</span>
-    </section>
-
-    <!-- 9. Today's Log -->
-    <section class="card log-card">
-      <h2 class="card-title">TODAY'S LOG</h2>
-      <ul class="log-list" id="logList"></ul>
-    </section>
-
-  </main>
-
-  <!-- ============ TRAINING VIEW ============ -->
-  <main class="view" data-view="training" id="viewTraining" hidden>
-    <header class="topbar">
-      <div class="greeting">
-        <p class="greeting-time">TRAINING</p>
-        <p class="greeting-date">Log today's sets</p>
-      </div>
-    </header>
-    <div id="trainingBody"></div>
-  </main>
-
-  <!-- ============ BODY VIEW ============ -->
-  <main class="view" data-view="body" id="viewBody" hidden>
-    <header class="topbar">
-      <div class="greeting">
-        <p class="greeting-time">BODY</p>
-        <p class="greeting-date">Weight &amp; Condition</p>
-      </div>
-    </header>
-    <div id="bodyContent"></div>
-  </main>
-
-  <!-- ============ STUB VIEW (Coming soon / Training placeholder) ============ -->
-  <main class="view" data-view="stub" id="viewStub" hidden>
-    <header class="topbar">
-      <p class="stub-back" id="stubBack">&larr; Home</p>
-    </header>
-    <div class="stub-body">
-      <p class="eyebrow" id="stubTitle">TRAINING</p>
-      <p class="stub-message" id="stubMessage">Coming soon</p>
-      <div id="stubExtra"></div>
-    </div>
-  </main>
-
-  <!-- ============ BOTTOM NAV ============ -->
-  <nav class="bottom-nav">
-    <button class="nav-item active" data-view="home" data-label="HOME">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 11.5 12 4l8 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>HOME</span>
-    </button>
-    <button class="nav-item" data-view="training" data-label="TRAINING">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 12h2m12 0h2M8 12h8M6 9v6m12-6v6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>TRAINING</span>
-    </button>
-    <button class="nav-item" data-view="body" data-label="BODY">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M6 20l2.5-8h7L18 20M9 12V9.5h6V12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>BODY</span>
-    </button>
-    <button class="nav-item" data-view="food" data-label="FOOD">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 3v8a3 3 0 0 0 6 0V3M9 3v8M18 3v18M15 3c0 4-3 4-3 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>FOOD</span>
-    </button>
-    <button class="nav-item" data-view="review" data-label="REVIEW">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 20V10m7 10V4m7 16v-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>REVIEW</span>
-    </button>
-  </nav>
-
-  <!-- ============ BOTTOM SHEET ============ -->
   <div class="sheet-overlay" id="sheetOverlay" hidden>
-    <div class="sheet">
-      <div class="sheet-handle"></div>
-      <div class="sheet-content" id="sheetContent"></div>
+    <div class="sheet" role="dialog" aria-modal="true">
+      <button class="sheet-handle" id="sheetHandle" aria-label="閉じる"></button>
+      <div id="sheetBody"></div>
     </div>
   </div>
 
+  <div class="toast" id="toast" hidden aria-live="polite"></div>
 </div>
 
-<script src="js/db.js"></script>
-<script src="js/condition.js"></script>
-<script src="js/workouts.js"></script>
+<!-- core -->
+<script src="js/core/dom.js"></script>
+<script src="js/core/dates.js"></script>
+<script src="js/core/db.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/sheet.js"></script>
+<script src="js/core/router.js"></script>
+
+<!-- domain -->
+<script src="js/domain/condition.js"></script>
+<script src="js/domain/workouts.js"></script>
+<script src="js/domain/plan.js"></script>
+<script src="js/domain/nutrition.js"></script>
+<script src="js/domain/sessions.js"></script>
+<script src="js/domain/stats.js"></script>
+
+<!-- ui -->
+<script src="js/ui/icons.js"></script>
+<script src="js/ui/widgets.js"></script>
+<script src="js/ui/chart.js"></script>
+
+<!-- screens -->
+<script src="js/screens/home.js"></script>
+<script src="js/screens/training.js"></script>
+<script src="js/screens/body.js"></script>
+<script src="js/screens/food.js"></script>
+<script src="js/screens/review.js"></script>
+<script src="js/screens/settings.js"></script>
+
 <script src="js/app.js"></script>
-<script src="js/home.js"></script>
-<script src="js/training.js"></script>
-<script src="js/body.js"></script>
 </body>
 </html>
