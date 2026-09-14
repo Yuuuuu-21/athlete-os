@@ -19,13 +19,16 @@
   const state = {
     dateKey: dates.today(),
     range: 30,
+    testMode: 'flight',   // vertical jump: measured from slow-motion by default
+    testFps: 240,
     bodyLogs: [],
     todayLog: null,
     weight: '',
     condition: Object.assign({}, AOS.condition.EMPTY),
     logged: false,
     tests: {},
-    testRows: []
+    testRows: [],
+    sessions: []
   };
 
   function settings() { return AOS.store.settings(); }
@@ -38,8 +41,10 @@
     return Promise.all([
       AOS.stats.allBodyLogs(),
       AOS.condition.load(state.dateKey),
-      AOS.stats.loadTests()
-    ]).then(([bodyLogs, condition, testRows]) => {
+      AOS.stats.loadTests(),
+      AOS.sessions.all()
+    ]).then(([bodyLogs, condition, testRows, sessions]) => {
+      state.sessions = sessions;
       state.bodyLogs = bodyLogs;
       state.todayLog = bodyLogs.filter((r) => r.date === state.dateKey).pop() || null;
       state.weight = state.todayLog && state.todayLog.weight !== undefined ? state.todayLog.weight : '';
@@ -111,11 +116,32 @@
       </button>`;
   }
 
+  // Derived from the training log with Epley's formula — no max
+  // attempt, no equipment, no extra input.
+  function estimatedRow(source) {
+    const best = AOS.stats.estimated1RM(state.sessions, source.exerciseId);
+    return h`
+      <button class="row" data-derived="${source.exerciseId}">
+        <span class="row-main">
+          <span class="row-title">${source.label}</span>
+          <span class="row-sub">${best ? `${dates.relativeJP(best.date)}の ${num(best.weight)}kg × ${best.reps} から計算` : '記録から自動で計算されます'}</span>
+        </span>
+        <span class="test-row-value">
+          <span class="test-value">${best ? best.value : '—'}<span class="test-pb"> kg</span></span>
+          <span class="test-pb">自動</span>
+        </span>
+      </button>`;
+  }
+
   function testsCard() {
     return W.card({
       title: 'PERFORMANCE',
       action: h`<span class="card-title">月1で更新</span>`,
-      body: h`<div>${AOS.stats.TESTS.map(testRow)}</div>`
+      body: h`
+        <div>
+          ${AOS.stats.TESTS.map(testRow)}
+          ${AOS.stats.ONE_RM_SOURCES.map(estimatedRow)}
+        </div>`
     });
   }
 
@@ -125,16 +151,50 @@
     const entry = state.tests[testId] || { latest: null, best: null, series: [] };
     const history = state.testRows.filter((r) => r.testId === testId).slice(0, 6);
 
+    // Vertical jump is the one test people can't measure by eye, so it
+    // gets a calculator: film it in slow motion, count the airborne
+    // frames, and the height falls out of h = g*t^2/8.
+    const flight = def.id === 'vertical';
+
     const el = AOS.sheet.open(def.name, h`
-      ${W.stepper({
-        name: 'test',
-        value: entry.latest ? entry.latest.value : '',
-        unit: def.unit,
-        step: def.better === 'low' ? 0.1 : 1,
-        decimals: def.better === 'low' ? 2 : 1,
-        label: def.name
-      })}
+      ${flight ? h`
+        <div style="margin-bottom:12px">
+          ${W.segmented('mode', [
+            { value: 'direct', label: 'cmを直接' },
+            { value: 'flight', label: '滞空時間から' }
+          ], state.testMode)}
+        </div>` : ''}
+
+      <div data-mode-direct ${flight && state.testMode === 'flight' ? AOS.dom.raw('hidden') : ''}>
+        ${W.stepper({
+          name: 'test',
+          value: entry.latest ? entry.latest.value : '',
+          unit: def.unit,
+          step: def.better === 'low' ? 0.1 : 1,
+          decimals: def.better === 'low' ? 2 : 1,
+          label: def.name
+        })}
+      </div>
+
+      ${flight ? h`
+        <div data-mode-flight ${state.testMode === 'flight' ? '' : AOS.dom.raw('hidden')}>
+          <div class="field">
+            <span class="field-label">滞空しているコマ数</span>
+            ${W.stepper({ name: 'frames', value: 120, step: 1, decimals: 0, label: 'コマ数' })}
+          </div>
+          <div class="field">
+            <span class="field-label">撮影フレームレート</span>
+            ${W.segmented('fps', [
+              { value: 240, label: '240fps' },
+              { value: 120, label: '120fps' },
+              { value: 60, label: '60fps' }
+            ], state.testFps)}
+          </div>
+          <p class="calc-result">滞空 <b data-flight-time>—</b> 秒 → <b data-flight-height>—</b> cm</p>
+        </div>` : ''}
+
       <button class="btn" data-save-test style="margin-top:14px">${dates.formatJP(state.dateKey)} として記録</button>
+      <p class="sheet-sub" style="margin-top:14px">${def.how}</p>
       ${entry.series.length > 1 ? h`<div style="margin-top:16px">${AOS.chart.line(entry.series, { height: 100, title: def.name })}</div>` : ''}
       ${history.length ? h`<div style="margin-top:8px">${history.map((row) => h`
         <div class="row">
@@ -146,17 +206,46 @@
         </div>`)}</div>` : ''}
     `, { subtitle: def.hint });
 
-    W.bindSteppers(el, () => { /* value is read on save */ });
+    function flightValue() {
+      const frames = W.stepperValue(el.querySelector('[data-stepper="frames"]'));
+      const seconds = AOS.stats.flightTimeFromFrames(frames, state.testFps);
+      return { seconds, height: AOS.stats.heightFromFlightTime(seconds) };
+    }
+
+    function paintFlight() {
+      const result = flightValue();
+      const timeEl = el.querySelector('[data-flight-time]');
+      const heightEl = el.querySelector('[data-flight-height]');
+      if (timeEl) timeEl.textContent = result.seconds ? result.seconds.toFixed(3) : '—';
+      if (heightEl) heightEl.textContent = result.height || '—';
+    }
+
+    W.bindSteppers(el, () => paintFlight());
+    if (flight) paintFlight();
+
+    if (flight) {
+      W.bindSegmented(el, 'mode', (mode) => {
+        state.testMode = mode;
+        el.querySelector('[data-mode-direct]').hidden = mode === 'flight';
+        el.querySelector('[data-mode-flight]').hidden = mode !== 'flight';
+      });
+      W.bindSegmented(el, 'fps', (fps) => {
+        state.testFps = Number(fps);
+        paintFlight();
+      });
+    }
 
     delegate(el, 'click', '[data-save-test]', () => {
-      const value = W.stepperValue(el.querySelector('[data-stepper="test"]'));
-      if (value === '' || value <= 0) {
-        toast('値を入力してください');
+      const useFlight = flight && state.testMode === 'flight';
+      const value = useFlight ? flightValue().height : W.stepperValue(el.querySelector('[data-stepper="test"]'));
+
+      if (value === '' || !value || value <= 0) {
+        toast(useFlight ? 'コマ数を入力してください' : '値を入力してください');
         return;
       }
-      AOS.stats.addTest(state.dateKey, testId, value).then(() => {
+      AOS.stats.addTest(state.dateKey, testId, value, useFlight ? 'flight' : 'direct').then(() => {
         AOS.sheet.close();
-        toast('記録しました');
+        toast(useFlight ? `${value} cm として記録しました` : '記録しました');
         AOS.router.rerender();
       });
     });
@@ -171,11 +260,28 @@
 
   // ---------- condition ----------
 
+  // Editing condition lives on HOME. Showing it in two places made it
+  // unclear which one was the real record, so this is a read-only
+  // summary that takes you there.
   function conditionCard() {
+    const adjust = AOS.condition.evaluate(state.condition);
     return W.card({
       title: "TODAY'S CONDITION",
-      action: state.logged ? h`<span class="badge badge-quiet">記録済み</span>` : '',
-      body: h`<div>${W.conditionScales(state.condition)}</div>`
+      body: h`
+        <button class="row" data-go-home>
+          <span class="row-main">
+            <span class="row-title">
+              ${adjust.complete ? `${adjust.level.title} · ${adjust.score} / 15` : '今朝の記録が未完了'}
+            </span>
+            <span class="row-sub">
+              ${adjust.complete
+                ? `睡眠 ${state.condition.sleep} · 気力 ${state.condition.energy} · 脚 ${state.condition.legs}`
+                : 'HOME で記録できます'}
+            </span>
+          </span>
+          ${adjust.complete ? h`<span class="badge badge-${adjust.level.tone}">${adjust.level.status}</span>` : ''}
+          <span class="row-chevron">${AOS.icons.chevron(16)}</span>
+        </button>`
     });
   }
 
@@ -214,9 +320,17 @@
       }
     }));
 
-    unbinds.push.apply(unbinds, W.bindScales(root, (field, value) => {
-      state.condition[field] = value;
-      AOS.condition.save(state.dateKey, state.condition);
+    unbinds.push(delegate(root, 'click', '[data-go-home]', () => AOS.router.go('home')));
+
+    unbinds.push(delegate(root, 'click', '[data-derived]', () => {
+      AOS.sheet.open('推定1RMについて', h`
+        <p class="help-text">
+          限界まで挙げて測るのではなく、トレーニングで実際に挙げた重量と回数から計算しています
+          （Epley式：重量 × (1 + 回数 ÷ 30)）。
+        </p>
+        <p class="help-text" style="margin-top:10px">
+          12回を超えるセットは誤差が大きいので計算から除いています。スクワットを記録すれば自動で更新されます。
+        </p>`);
     }));
 
     unbinds.push(W.bindSegmented(root, 'range', (value) => {

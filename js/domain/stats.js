@@ -16,13 +16,79 @@
 
   // ---------- performance tests ----------
 
+  // Every test here has to be doable with a phone, a tape measure and
+  // a wall. Anything that needs gym equipment belongs somewhere else.
   const TESTS = [
-    { id: 'vertical', name: '垂直跳び', unit: 'cm', better: 'high', hint: '助走なし。両足で最大跳躍' },
-    { id: 'reach', name: '最高到達点', unit: 'cm', better: 'high', hint: '助走ありのスパイク到達点' },
-    { id: 'broad', name: '立ち幅跳び', unit: 'cm', better: 'high', hint: '水平方向のパワー' },
-    { id: 'sprint20', name: '20m スプリント', unit: '秒', better: 'low', hint: '短い距離の加速' },
-    { id: 'squat1rm', name: 'スクワット 推定1RM', unit: 'kg', better: 'high', hint: '下半身の最大筋力' }
+    {
+      id: 'vertical', name: '垂直跳び', unit: 'cm', better: 'high', optional: false,
+      hint: '助走なしの最大跳躍',
+      how: 'iPhoneのスロー(240fps)で撮り、足が離れたコマから着地までのコマ数を数える。下の「滞空時間から計算」に入れれば cm に換算されます。壁にチョークで印をつける方法でもOK。'
+    },
+    {
+      id: 'reach', name: '最高到達点', unit: 'cm', better: 'high', optional: false,
+      hint: '助走ありのスパイク到達点',
+      how: '壁に付箋を貼って助走から最高点を叩く → 床からの高さをメジャーで測る。体育館ならネット上端が基準になります（6人制男子 243cm / 女子 224cm）。'
+    },
+    {
+      id: 'broad', name: '立ち幅跳び', unit: 'cm', better: 'high', optional: false,
+      hint: '水平方向のパワー',
+      how: 'つま先の位置から、着地したかかとまでをメジャーで測る。メジャーだけでできます。'
+    },
+    {
+      id: 'sprint20', name: '20m スプリント', unit: '秒', better: 'low', optional: true,
+      hint: '短い距離の加速（任意）',
+      how: '20mの直線と計測してくれる人（または横からの動画）が必要です。用意できるときだけで大丈夫。'
+    }
   ];
+
+  // Squat strength is not a test you should take — it is already in
+  // your training log. Epley's formula turns the best working set
+  // into an estimate, with no max attempt and no injury risk.
+  const ONE_RM_SOURCES = [
+    { exerciseId: 'A-squat', label: 'スクワット 推定1RM' }
+  ];
+
+  function epley(weight, reps) {
+    return weight * (1 + reps / 30);
+  }
+
+  function estimated1RM(sessions, exerciseId) {
+    let best = null;
+
+    (sessions || []).forEach((session) => {
+      if (session.status === 'in_progress') return;
+      (session.exercises || []).forEach((exercise) => {
+        if (exercise.exerciseId !== exerciseId) return;
+        if ((exercise.metric || 'weight_reps') !== 'weight_reps') return;
+
+        exercise.sets.forEach((set) => {
+          const weight = Number(set.weight);
+          const reps = Number(set.reps);
+          // Above ~12 reps the formula stops being an estimate and
+          // starts being a guess.
+          if (!set.completed || !weight || !reps || reps > 12) return;
+          const value = epley(weight, reps);
+          if (!best || value > best.value) {
+            best = { value: Math.round(value), weight, reps, date: session.date };
+          }
+        });
+      });
+    });
+
+    return best;
+  }
+
+  // Flight time -> jump height. h = g * t^2 / 8, in centimetres.
+  function heightFromFlightTime(seconds) {
+    const t = Number(seconds);
+    if (!t || t <= 0) return null;
+    return Math.round((9.81 * t * t / 8) * 1000) / 10;
+  }
+
+  function flightTimeFromFrames(frames, fps) {
+    if (!frames || !fps) return null;
+    return Number(frames) / Number(fps);
+  }
 
   function testDef(testId) {
     return TESTS.find((t) => t.id === testId) || null;
@@ -53,9 +119,13 @@
     return summary;
   }
 
-  function addTest(dateKey, testId, value) {
-    return db.put('performanceTests', { date: dateKey, testId, value: Number(value) })
-      .then((row) => { AOS.store.changed('tests'); return row; });
+  function addTest(dateKey, testId, value, method) {
+    return db.put('performanceTests', {
+      date: dateKey,
+      testId,
+      value: Number(value),
+      method: method || 'direct'
+    }).then((row) => { AOS.store.changed('tests'); return row; });
   }
 
   function removeTest(id) {
@@ -218,7 +288,8 @@
   }
 
   AOS.stats = {
-    TESTS, testDef, isBetter, loadTests, testSummary, addTest, removeTest,
+    TESTS, ONE_RM_SOURCES, testDef, isBetter, loadTests, testSummary, addTest, removeTest,
+    estimated1RM, epley, heightFromFlightTime, flightTimeFromFrames,
     allBodyLogs, bodyLogFor, saveBodyLog, weightSeries, latestWeight, movingAverage,
     readinessSeries, weekSummary, streak
   };

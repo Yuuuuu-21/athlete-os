@@ -35,10 +35,13 @@
 
   // ---------- readiness ring ----------
 
+  // `value` is rendered as given, so a caller can pass "—" for an
+  // unmeasured state; the arc uses its numeric value, or nothing.
   function ring(value, max, tone, caption) {
     const R = 52;
     const C = 2 * Math.PI * R;
-    const pct = max ? clamp(value / max, 0, 1) : 0;
+    const numeric = Number(value);
+    const pct = max && Number.isFinite(numeric) ? clamp(numeric / max, 0, 1) : 0;
     const offset = C * (1 - pct);
 
     return h`
