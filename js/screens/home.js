@@ -24,6 +24,9 @@
     streak: 0,
     weight: '',
     lastWeight: null,
+    missed: [],
+    freeDays: [],
+    weekSessions: [],
     // The morning card collapses once it has everything; `expand`
     // lets you reopen it to change an answer.
     expand: false,
@@ -44,9 +47,14 @@
       AOS.stats.bodyLogFor(state.dateKey),
       AOS.nutrition.load(state.dateKey),
       AOS.db.getAll('conditionLogs'),
-      AOS.stats.allBodyLogs()
-    ]).then(([condition, sessions, bodyLog, meals, conditionRows, bodyLogs]) => {
+      AOS.stats.allBodyLogs(),
+      AOS.sessions.all()
+    ]).then(([condition, sessions, bodyLog, meals, conditionRows, bodyLogs, allSessions]) => {
       state.lastWeight = AOS.stats.latestWeight(bodyLogs.filter((b) => b.date !== state.dateKey));
+      state.missed = AOS.plan.missedThisWeek(allSessions, state.dateKey)
+        .filter((m) => !AOS.plan.isDismissed(m.workoutId, state.dateKey));
+      state.freeDays = AOS.plan.freeDaysAhead(state.dateKey);
+      state.weekSessions = allSessions;
       state.logged = condition.complete;
       state.condition = { sleep: condition.sleep, energy: condition.energy, legs: condition.legs };
       state.adjust = AOS.condition.evaluate(state.condition);
@@ -171,6 +179,75 @@
     return latest ? `前回 ${num(latest.weight)} kg` : '';
   }
 
+  // The day before a match, a lower-body + jump session is the one
+  // thing most likely to cost you the match. Say so, and offer the
+  // swap — but never make it silently.
+  function eveOfMatchWarning() {
+    const vb = AOS.plan.volleyball(state.dateKey);
+    if (!vb || vb.days !== 1) return '';
+
+    const workout = AOS.workouts.get(state.workoutId);
+    if (!workout.trainable || AOS.plan.legLoad(state.workoutId) !== 'high') return '';
+
+    // Prefer swapping to a session that spares the legs and hasn't
+    // been done this week; otherwise just shorten today.
+    const alternative = AOS.workouts.ORDER.find((id) => {
+      const w = AOS.workouts.get(id);
+      if (!w.trainable || AOS.plan.legLoad(id) === 'high') return false;
+      return !state.weekSessions.some((s) => s.workoutType === id
+        && s.date >= dates.startOfWeek(state.dateKey)
+        && (s.status === 'completed' || s.status === 'partial'));
+    });
+
+    return h`
+      <div class="plan-adjust red">
+        ${AOS.icons.flag(16)}
+        <span>
+          明日はバレー。今日は下半身とジャンプの日なので、追い込むと脚が残ります。
+          <span class="nudge-actions">
+            ${alternative
+              ? h`<button class="nudge-btn" data-action="swap-workout" data-workout="${alternative}">${AOS.workouts.get(alternative).label}に入れ替える</button>`
+              : h`<button class="nudge-btn" data-action="shorten">30分にする</button>`}
+            <button class="nudge-btn quiet" data-action="change-workout">別のメニュー</button>
+          </span>
+        </span>
+      </div>`;
+  }
+
+  // A match took a training day, or a day simply slipped. Point at it
+  // once, offer the nearest free day, and let it be dismissed.
+  function missedCard() {
+    if (!state.missed.length) return '';
+
+    const item = state.missed[0];
+    const workout = AOS.workouts.get(item.workoutId);
+    const target = state.freeDays[0];
+
+    return W.card({
+      className: 'nudge-card',
+      body: h`
+        <div class="nudge-head">
+          <span class="badge badge-amber">今週 未実施</span>
+          <button class="nudge-close" data-action="dismiss-missed" data-workout="${item.workoutId}" aria-label="閉じる">
+            ${AOS.icons.close(16)}
+          </button>
+        </div>
+        <p class="nudge-title">${workout.label} がまだです</p>
+        <p class="nudge-text">
+          ${item.displaced
+            ? `${dates.formatJP(item.plannedFor)}はバレーの予定が入ったため、${workout.sub}の日がなくなりました。`
+            : `${dates.formatJP(item.plannedFor)}の予定でしたが、記録がありません。`}
+        </p>
+        ${target
+          ? h`<button class="btn btn-soft btn-sm" data-action="reschedule"
+                      data-workout="${item.workoutId}" data-date="${target.dateKey}">
+                ${dates.WD_JP[target.dow]}曜（${dates.formatShort(target.dateKey)}）に入れる
+              </button>`
+          : h`<p class="nudge-text">今週は空いている日がありません。来週に回すか、今日のメニューを変更してください。</p>`}
+      `
+    });
+  }
+
   function planCard() {
     const workout = AOS.workouts.get(state.workoutId);
     const adjust = effectiveAdjust();
@@ -207,6 +284,7 @@
       body: h`
         <p class="plan-name">${workout.label}</p>
         <p class="plan-sub">${workout.sub}</p>
+        ${eveOfMatchWarning()}
         ${adjustLine}
         ${workout.trainable ? h`
           <div style="margin-top:14px">
@@ -359,6 +437,7 @@
       ${morningCard()}
       ${planCard()}
       ${actionButton()}
+      ${missedCard()}
       ${volleyballStrip()}
       ${checklistCard()}
     `);
@@ -452,6 +531,23 @@
       } else if (action === 'toggle-morning') {
         state.expand = !state.expand;
         AOS.router.rerender();
+      } else if (action === 'swap-workout') {
+        AOS.plan.setForDate(state.dateKey, target.dataset.workout)
+          .then(() => { toast('今日のメニューを変更しました'); return AOS.router.rerender(); });
+      } else if (action === 'shorten') {
+        AOS.store.update({ duration: 30 }).then(() => {
+          toast('30分メニューにしました');
+          AOS.router.rerender();
+        });
+      } else if (action === 'reschedule') {
+        const dateKey = target.dataset.date;
+        AOS.plan.setForDate(dateKey, target.dataset.workout).then(() => {
+          toast(`${dates.formatJP(dateKey)}に入れました`);
+          AOS.router.rerender();
+        });
+      } else if (action === 'dismiss-missed') {
+        AOS.plan.dismissSuggestion(target.dataset.workout, state.dateKey)
+          .then(() => AOS.router.rerender());
       } else if (action === 'focus-morning') {
         // The checklist reports the morning items; the card edits them.
         state.expand = true;

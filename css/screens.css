@@ -68,6 +68,69 @@
 .plan-adjust.amber { background: var(--amber-soft); color: var(--amber); }
 .plan-adjust.red   { background: var(--red-soft);   color: var(--red); }
 
+/* ---------- HOME: nudges ---------- */
+
+.nudge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* Sits on a tinted note, so it takes the note's colour for its text
+   and outline and stands on the card surface behind it. */
+.nudge-btn {
+  padding: 8px 13px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: inherit;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.nudge-btn:active { opacity: .8; }
+
+.nudge-btn.quiet {
+  background: transparent;
+  box-shadow: none;
+  opacity: .85;
+  text-decoration: underline;
+}
+
+.nudge-card { border-color: var(--amber); }
+
+.nudge-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.nudge-close {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--muted);
+}
+
+.nudge-title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+
+.nudge-text {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
 .focus {
   margin-top: 14px;
   padding-top: 14px;

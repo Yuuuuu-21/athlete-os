@@ -114,8 +114,87 @@
     return week(startKey).filter((d) => AOS.workouts.get(d.workoutId).trainable).length;
   }
 
+  // ---------- nudges ----------
+  // The app never rewrites the week on its own. A match dropped into
+  // the middle of it simply takes that day, and these helpers let HOME
+  // point out the consequences so the decision stays with the user.
+
+  // The weekly pattern before scheduled matches and one-off changes.
+  function baseWorkoutFor(dateKey) {
+    return (settings().planDays || {})[dates.weekday(dateKey)] || 'REST';
+  }
+
+  // How much of tomorrow's jump this session is likely to spend.
+  function legLoad(workoutId) {
+    const workout = AOS.workouts.get(workoutId);
+    if (!workout.exercises) return 'low';
+    if (workout.exercises.some((e) => e.type === 'lower')) return 'high';
+    if (workout.exercises.some((e) => e.type === 'jump')) return 'medium';
+    return 'low';
+  }
+
+  // Workouts this week's plan asked for that haven't happened yet, by
+  // the time they should have. Doing B on Thursday instead of Wednesday
+  // counts as done — the point is the session, not the slot.
+  function missedThisWeek(sessions, fromKey) {
+    const today = fromKey || dates.today();
+    const weekStart = dates.startOfWeek(today);
+
+    const doneTypes = {};
+    (sessions || []).forEach((session) => {
+      if (session.status !== 'completed' && session.status !== 'partial') return;
+      if (session.date < weekStart || session.date > dates.addDays(weekStart, 6)) return;
+      doneTypes[session.workoutType] = true;
+    });
+
+    const missed = [];
+    dates.weekKeys(weekStart).forEach((dateKey) => {
+      // Today still has a whole day left, and HOME already shows a
+      // start button for it. Only days that have passed can be missed.
+      if (dateKey >= today) return;
+      const base = baseWorkoutFor(dateKey);
+      if (!AOS.workouts.get(base).trainable) return;
+      if (doneTypes[base]) return;
+      if (missed.some((m) => m.workoutId === base)) return;
+      // Displaced by a match, or simply not done.
+      missed.push({ workoutId: base, plannedFor: dateKey, displaced: forDate(dateKey) !== base });
+    });
+    return missed;
+  }
+
+  // Remaining days this week with nothing scheduled on them.
+  function freeDaysAhead(fromKey) {
+    const today = fromKey || dates.today();
+    const weekStart = dates.startOfWeek(today);
+    return dates.weekKeys(weekStart)
+      .filter((dateKey) => dateKey >= today && !AOS.workouts.get(forDate(dateKey)).trainable && forDate(dateKey) !== 'VOLLEYBALL')
+      .map((dateKey) => ({ dateKey, dow: dates.weekday(dateKey) }));
+  }
+
+  // Dismissals last only for the week they belong to.
+  function suggestionKey(workoutId, fromKey) {
+    return `${dates.startOfWeek(fromKey || dates.today())}:${workoutId}`;
+  }
+
+  function isDismissed(workoutId, fromKey) {
+    return !!(settings().dismissed || {})[suggestionKey(workoutId, fromKey)];
+  }
+
+  function dismissSuggestion(workoutId, fromKey) {
+    const weekStart = dates.startOfWeek(fromKey || dates.today());
+    const kept = {};
+    const current = settings().dismissed || {};
+    Object.keys(current).forEach((key) => {
+      if (key.indexOf(weekStart) === 0) kept[key] = current[key];
+    });
+    kept[suggestionKey(workoutId, fromKey)] = true;
+    return AOS.store.update({ dismissed: kept });
+  }
+
   AOS.plan = {
     forDate, setForDate, week, volleyball, plannedTrainingDaysThisWeek,
-    scheduledDates, upcomingDates, isScheduled, addDate, removeDate
+    scheduledDates, upcomingDates, isScheduled, addDate, removeDate,
+    baseWorkoutFor, legLoad, missedThisWeek, freeDaysAhead,
+    isDismissed, dismissSuggestion
   };
 })(window);

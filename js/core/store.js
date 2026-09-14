@@ -26,7 +26,9 @@
     // Weekly plan: weekday -> workout id
     planDays: { 0: 'REST', 1: 'A', 2: 'REST', 3: 'B', 4: 'REST', 5: 'C', 6: 'VOLLEYBALL' },
     // One-off "today I'm doing something else" choices, dateKey -> workout id
-    dayOverrides: {}
+    dayOverrides: {},
+    // Nudges the user has waved away, "<weekStart>:<workoutId>" -> true
+    dismissed: {}
   };
 
   const state = { settings: Object.assign({}, DEFAULTS) };
@@ -60,6 +62,7 @@
     next.planDays = Object.assign({}, DEFAULTS.planDays, record.planDays);
     next.dayOverrides = Object.assign({}, record.dayOverrides);
     next.volleyballDates = Array.isArray(record.volleyballDates) ? record.volleyballDates.slice() : [];
+    next.dismissed = Object.assign({}, record.dismissed);
 
     if (record.selectedDuration && !record.duration) next.duration = record.selectedDuration;
     if (record.volleyballDay && record.volleyballDow === undefined) {
