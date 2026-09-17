@@ -35,15 +35,51 @@
     `));
   }
 
+  // Screens that record against a day set `dateNav: true`; the title
+  // becomes that day with ‹ › to step and a native picker behind it.
+  function dateNav() {
+    const dates = AOS.dates;
+    const viewing = AOS.store.viewDate();
+    const today = dates.today();
+    const past = viewing !== today;
+
+    return h`
+      <div class="date-nav">
+        <button class="date-step" data-date-step="-1" aria-label="前の日">${AOS.icons.chevron(18)}</button>
+        <label class="date-title">
+          <h1 class="topbar-title">${past ? dates.formatJP(viewing) : `今日 ${dates.formatJP(viewing)}`}</h1>
+          <input type="date" class="date-pick" data-date-pick value="${viewing}" max="${today}" aria-label="日付を選ぶ">
+        </label>
+        <button class="date-step" data-date-step="1" aria-label="次の日"
+                ${past ? '' : AOS.dom.raw('disabled')}>${AOS.icons.chevron(18)}</button>
+      </div>`;
+  }
+
   function renderTopbar(screen) {
     const bar = (screen.topbar && screen.topbar()) || { title: screen.label };
+    const past = bar.dateNav && AOS.store.isViewingPast();
+
     setHTML(topbarEl, h`
-      <div>
-        ${bar.eyebrow ? h`<p class="topbar-eyebrow">${bar.eyebrow}</p>` : ''}
-        <h1 class="topbar-title">${bar.title || ''}</h1>
+      <div class="topbar-row">
+        <div class="topbar-main">
+          ${bar.eyebrow ? h`<p class="topbar-eyebrow">${bar.eyebrow}</p>` : ''}
+          ${bar.dateNav ? dateNav() : h`<h1 class="topbar-title">${bar.title || ''}</h1>`}
+        </div>
+        ${bar.action || ''}
       </div>
-      ${bar.action || ''}
+      ${past ? h`
+        <div class="past-banner">
+          <span>${AOS.dates.relativeJP(AOS.store.viewDate())}の記録を編集中</span>
+          <button class="past-back" data-date-today>今日に戻る</button>
+        </div>` : ''}
     `);
+    topbarEl.classList.toggle('is-past', !!past);
+  }
+
+  function changeViewDate(dateKey) {
+    AOS.store.setViewDate(dateKey);
+    AOS.dom.haptic(6);
+    return rerender().then(() => global.scrollTo({ top: 0, behavior: 'auto' }));
   }
 
   function unbindAll() {
@@ -104,6 +140,17 @@
     AOS.dom.delegate(navEl, 'click', '[data-go]', (e, target) => {
       AOS.dom.haptic(6);
       go(target.dataset.go);
+    });
+
+    // The topbar is re-rendered on every paint, so its controls are
+    // handled here once rather than by each screen.
+    AOS.dom.delegate(topbarEl, 'click', '[data-date-step]', (e, target) => {
+      const step = Number(target.dataset.dateStep);
+      changeViewDate(AOS.dates.addDays(AOS.store.viewDate(), step));
+    });
+    AOS.dom.delegate(topbarEl, 'click', '[data-date-today]', () => changeViewDate(null));
+    AOS.dom.delegate(topbarEl, 'change', '[data-date-pick]', (e, target) => {
+      if (target.value) changeViewDate(target.value);
     });
 
     global.addEventListener('hashchange', () => {

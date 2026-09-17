@@ -29,7 +29,7 @@
   // ---------- data ----------
 
   function load() {
-    state.dateKey = dates.today();
+    state.dateKey = AOS.store.viewDate();
 
     return Promise.all([
       AOS.sessions.findInProgress(),
@@ -44,7 +44,11 @@
         ? state.session.workoutType
         : AOS.plan.forDate(state.dateKey);
 
-      return AOS.sessions.lastFor(workoutId, state.session ? state.session.id : null);
+      return AOS.sessions.lastFor(
+        workoutId,
+        state.session ? state.session.id : null,
+        state.session ? state.session.date : state.dateKey
+      );
     }).then((last) => {
       state.lastSession = last;
       state.reference = {};
@@ -54,9 +58,11 @@
     });
   }
 
-  // Create (or resume) today's session. Called from HOME too.
-  function begin(workoutId) {
-    const dateKey = dates.today();
+  // Create (or resume) a session. Called from HOME too. `dateKey`
+  // lets a forgotten session be logged against the day it happened;
+  // the readiness used is that day's, not today's.
+  function begin(workoutId, dateKey) {
+    dateKey = dateKey || AOS.store.viewDate();
     const workout = AOS.workouts.get(workoutId);
 
     return AOS.sessions.findInProgress().then((existing) => {
@@ -69,7 +75,7 @@
         const adjust = AOS.condition.evaluate(condition);
         const prescribed = AOS.workouts.prescribe(workoutId, settings().duration, adjust);
 
-        return AOS.sessions.lastFor(workoutId, null).then((last) => {
+        return AOS.sessions.lastFor(workoutId, null, dateKey).then((last) => {
           const session = AOS.sessions.build(dateKey, workoutId, prescribed, last, adjust);
           return AOS.sessions.save(session).then(() => {
             AOS.store.changed('training');
@@ -246,14 +252,14 @@
 
     const todayCard = done.length
       ? W.card({
-        title: '今日の記録',
+        title: AOS.store.isViewingPast() ? 'この日の記録' : '今日の記録',
         body: h`<div>${done.map((session) => sessionRow(session))}</div>`
       })
       : '';
 
     return h`
       ${W.card({
-        title: 'TODAY',
+        title: AOS.store.isViewingPast() ? 'PLAN' : 'TODAY',
         action: h`<button class="link-btn" data-action="change-workout">変更</button>`,
         body: h`
           <p class="plan-name">${workout.label}</p>
@@ -268,7 +274,9 @@
       })}
 
       ${workout.trainable
-        ? h`<button class="btn" data-action="start">${done.length ? 'もう一度やる' : 'トレーニング開始'}</button>`
+        ? h`<button class="btn" data-action="start">${done.length
+            ? 'もう一度やる'
+            : (AOS.store.isViewingPast() ? 'この日のトレーニングを記録' : 'トレーニング開始')}</button>`
         : h`<button class="btn btn-ghost" data-action="change-workout">別のメニューをやる</button>`}
 
       ${todayCard}
@@ -301,9 +309,10 @@
 
   function topbar() {
     if (state.session) {
-      return { eyebrow: 'IN PROGRESS', title: AOS.workouts.get(state.session.workoutType).label };
+      const onDay = state.session.date !== dates.today() ? ` · ${dates.formatJP(state.session.date)}の記録` : '';
+      return { eyebrow: `IN PROGRESS${onDay}`, title: AOS.workouts.get(state.session.workoutType).label };
     }
-    return { eyebrow: 'TRAINING', title: 'トレーニング' };
+    return { eyebrow: 'TRAINING · トレーニング', dateNav: true };
   }
 
   // ---------- rest timer ----------
@@ -506,7 +515,7 @@
 
     unbinds.push(delegate(root, 'click', '[data-action]', (e, target) => {
       const action = target.dataset.action;
-      if (action === 'start') begin(AOS.plan.forDate(state.dateKey)).then(() => AOS.router.rerender());
+      if (action === 'start') begin(AOS.plan.forDate(state.dateKey), state.dateKey).then(() => AOS.router.rerender());
       else if (action === 'finish') finishSession();
       else if (action === 'discard') discardSession();
       else if (action === 'change-workout') openWorkoutPicker();

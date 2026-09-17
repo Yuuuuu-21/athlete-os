@@ -71,10 +71,7 @@ svg { display: block; }
   position: sticky;
   top: 0;
   z-index: 20;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
+  display: block;
   padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   -webkit-backdrop-filter: saturate(180%) blur(14px);

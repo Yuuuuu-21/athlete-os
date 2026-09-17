@@ -29,7 +29,7 @@
   // ---------- data ----------
 
   function load() {
-    state.dateKey = dates.today();
+    state.dateKey = AOS.store.viewDate();
 
     return Promise.all([
       N.load(state.dateKey),
@@ -39,8 +39,11 @@
       state.bySlot = N.bySlot(state.meals);
       state.total = Math.round(N.totals(state.meals));
 
-      const latest = AOS.stats.latestWeight(bodyLogs);
-      state.weight = latest ? Number(latest.weight) : null;
+      // The target for a past day uses the weight as it was then, not
+      // today's — otherwise backfilled days get judged by a later body.
+      const asOf = AOS.stats.latestWeight(bodyLogs.filter((b) => b.date <= state.dateKey))
+        || AOS.stats.latestWeight(bodyLogs);
+      state.weight = asOf ? Number(asOf.weight) : null;
       state.target = N.proteinTarget(state.weight);
 
       const todayLog = bodyLogs.filter((r) => r.date === state.dateKey).pop();
@@ -64,7 +67,7 @@
           <div class="macro-main">
             <p class="macro-value">${state.total} <span class="weight-unit">/ ${target} g</span></p>
             <p class="macro-target">
-              ${remaining > 0 ? `あと ${remaining} g` : '目標達成。今日はよく食べた。'}
+              ${remaining > 0 ? `あと ${remaining} g` : '目標達成。'}
             </p>
           </div>
         </div>
@@ -107,7 +110,7 @@
 
   function mealsCard() {
     return W.card({
-      title: "TODAY'S MEALS",
+      title: AOS.store.isViewingPast() ? 'MEALS' : "TODAY'S MEALS",
       body: h`<div>${N.SLOTS.map(mealSlot)}</div>`
     });
   }
@@ -224,7 +227,7 @@
   }
 
   function topbar() {
-    return { eyebrow: 'FOOD', title: '食事' };
+    return { eyebrow: 'FOOD · 食事', dateNav: true };
   }
 
   function bind(root) {

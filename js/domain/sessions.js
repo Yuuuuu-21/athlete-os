@@ -41,9 +41,14 @@
     });
   }
 
-  function lastFor(workoutId, excludeId) {
+  // `onOrBefore` matters when a past day is filled in later: "last
+  // time" must be the session before that day, not one done since.
+  function lastFor(workoutId, excludeId, onOrBefore) {
     return all().then((rows) => sortNewestFirst(
-      rows.filter((s) => s.workoutType === workoutId && s.id !== excludeId && s.status !== 'in_progress')
+      rows.filter((s) => s.workoutType === workoutId
+        && s.id !== excludeId
+        && s.status !== 'in_progress'
+        && (!onOrBefore || s.date <= onOrBefore))
     )[0] || null);
   }
 

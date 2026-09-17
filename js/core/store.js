@@ -98,11 +98,13 @@
     });
   }
 
-  // Keep the override map from growing forever — anything older
-  // than a week is history, and history lives in trainingSessions.
+  // Keep the override map from growing forever. The window is wide
+  // enough to backfill a few weeks, and the day being set is always
+  // kept — a backfilled date older than the cutoff used to be pruned
+  // in the same write that created it.
   function setDayOverride(dateKey, workoutId) {
     const overrides = {};
-    const cutoff = dates.addDays(dates.today(), -7);
+    const cutoff = dates.addDays(dates.today(), -60);
     Object.keys(state.settings.dayOverrides || {}).forEach((k) => {
       if (k >= cutoff) overrides[k] = state.settings.dayOverrides[k];
     });
@@ -125,5 +127,34 @@
     emit('data', { source });
   }
 
-  AOS.store = { DEFAULTS, load, settings, update, setDayOverride, applyTheme, on, off, emit, changed };
+  // ---------- the day being recorded ----------
+  // HOME, FOOD, BODY and TRAINING all record against this date, so
+  // yesterday's meals or a weight you forgot can be filled in later.
+  // It lives in memory only: reopening the app always lands on today,
+  // which keeps a morning entry from quietly going into a past day.
+
+  let viewDate = null;   // null = today
+
+  function currentViewDate() {
+    const today = dates.today();
+    if (!viewDate || viewDate >= today) return today;
+    return viewDate;
+  }
+
+  function setViewDate(dateKey) {
+    const today = dates.today();
+    // The future can't be recorded yet.
+    viewDate = !dateKey || dateKey >= today ? null : dateKey;
+    emit('viewdate', currentViewDate());
+    return currentViewDate();
+  }
+
+  function isViewingPast() {
+    return currentViewDate() !== dates.today();
+  }
+
+  AOS.store = {
+    DEFAULTS, load, settings, update, setDayOverride, applyTheme, on, off, emit, changed,
+    viewDate: currentViewDate, setViewDate, isViewingPast
+  };
 })(window);

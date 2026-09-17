@@ -38,7 +38,7 @@
   // ---------- data ----------
 
   function load() {
-    state.dateKey = dates.today();
+    state.dateKey = AOS.store.viewDate();
     state.workoutId = AOS.plan.forDate(state.dateKey);
 
     return Promise.all([
@@ -50,7 +50,7 @@
       AOS.stats.allBodyLogs(),
       AOS.sessions.all()
     ]).then(([condition, sessions, bodyLog, meals, conditionRows, bodyLogs, allSessions]) => {
-      state.lastWeight = AOS.stats.latestWeight(bodyLogs.filter((b) => b.date !== state.dateKey));
+      state.lastWeight = AOS.stats.latestWeight(bodyLogs.filter((b) => b.date < state.dateKey));
       state.missed = AOS.plan.missedThisWeek(allSessions, state.dateKey)
         .filter((m) => !AOS.plan.isDismissed(m.workoutId, state.dateKey));
       state.freeDays = AOS.plan.freeDaysAhead(state.dateKey);
@@ -67,6 +67,16 @@
   }
 
   // ---------- what today actually requires ----------
+
+  // Recording a past day: the same screen, minus everything that only
+  // makes sense about today (countdowns, nudges, the eve-of-match note).
+  function past() {
+    return state.dateKey !== dates.today();
+  }
+
+  function dayWord() {
+    return past() ? 'この日' : '今日';
+  }
 
   function hasWeight() {
     return state.weight !== '' && Number(state.weight) > 0;
@@ -132,7 +142,7 @@
                    state.adjust.complete ? state.adjust.level.tone : 'line-strong',
                    state.adjust.complete ? '/ 15' : `${state.adjust.filled} / 3`)}
           <div class="hero-main">
-            <p class="hero-status">今朝の記録</p>
+            <p class="hero-status">${past() ? 'この日の記録' : '今朝の記録'}</p>
             <p class="hero-desc">${morningPrompt()}</p>
           </div>
         </div>`;
@@ -146,7 +156,7 @@
       body: h`
         ${head}
         ${state.adjust.warnings.length ? h`<p class="hero-note">${state.adjust.warnings[0]}</p>` : ''}
-        ${workout.trainable ? '' : h`<p class="hero-note">今日は${workout.label}。${workout.focusDesc}</p>`}
+        ${workout.trainable ? '' : h`<p class="hero-note">${dayWord()}は${workout.label}。${workout.focusDesc}</p>`}
 
         ${open ? h`
           <div class="morning-body">
@@ -167,10 +177,12 @@
   function morningPrompt() {
     if (!state.adjust.complete) {
       return state.adjust.filled
-        ? `あと ${state.adjust.remaining} つ選ぶと、今日のメニューが決まる。`
-        : '3つ選んで体重を入れるだけ。今日のメニューの重さとセット数が、その場で決まる。';
+        ? `あと ${state.adjust.remaining} つ選ぶと、${dayWord()}のメニューが決まる。`
+        : (past()
+          ? '後から入力しても、この日の記録として保存されます。'
+          : '3つ選んで体重を入れるだけ。今日のメニューの重さとセット数が、その場で決まる。');
     }
-    return hasWeight() ? '' : '体重を入れれば今朝の記録は完了。';
+    return hasWeight() ? '' : `体重を入れれば${past() ? 'この日' : '今朝'}の記録は完了。`;
   }
 
   function weightHint() {
@@ -183,6 +195,7 @@
   // thing most likely to cost you the match. Say so, and offer the
   // swap — but never make it silently.
   function eveOfMatchWarning() {
+    if (past()) return '';
     const vb = AOS.plan.volleyball(state.dateKey);
     if (!vb || vb.days !== 1) return '';
 
@@ -217,7 +230,7 @@
   // A match took a training day, or a day simply slipped. Point at it
   // once, offer the nearest free day, and let it be dismissed.
   function missedCard() {
-    if (!state.missed.length) return '';
+    if (past() || !state.missed.length) return '';
 
     const item = state.missed[0];
     const workout = AOS.workouts.get(item.workoutId);
@@ -279,7 +292,7 @@
       </ul>` : '';
 
     return W.card({
-      title: 'TODAY',
+      title: past() ? 'PLAN' : 'TODAY',
       action: h`<button class="link-btn" data-action="change-workout">変更</button>`,
       body: h`
         <p class="plan-name">${workout.label}</p>
@@ -307,7 +320,7 @@
       if (workout.id === 'VOLLEYBALL') {
         return h`<button class="btn" data-action="log-volleyball">練習を記録する</button>`;
       }
-      return h`<button class="btn btn-ghost" data-action="go-body">体重とコンディションを記録</button>`;
+      return '';
     }
 
     if (state.session && state.session.status === 'in_progress') {
@@ -322,7 +335,9 @@
         </button>`;
     }
 
-    return h`<button class="btn" data-action="start">トレーニング開始</button>`;
+    return past()
+      ? h`<button class="btn btn-ghost" data-action="start">この日のトレーニングを記録</button>`
+      : h`<button class="btn" data-action="start">トレーニング開始</button>`;
   }
 
   function volleyballStrip() {
@@ -405,7 +420,7 @@
     const progress = requiredProgress();
 
     return W.card({
-      title: "TODAY'S LOG",
+      title: past() ? 'LOG' : "TODAY'S LOG",
       action: state.streak > 1 ? h`<span class="badge badge-brand">${state.streak}日連続</span>` : '',
       body: h`
         <div>${items.map((item) => h`
@@ -423,7 +438,7 @@
         `)}</div>
         <p class="check-footer">
           ${progress.done >= progress.total
-            ? '今日の必須はすべて記録済み。'
+            ? `${dayWord()}の必須はすべて記録済み。`
             : `毎日の記録があと ${progress.total - progress.done} つ`}
         </p>
       `
@@ -438,7 +453,7 @@
       ${planCard()}
       ${actionButton()}
       ${missedCard()}
-      ${volleyballStrip()}
+      ${past() ? '' : volleyballStrip()}
       ${checklistCard()}
     `);
   }
@@ -448,8 +463,8 @@
     const allDone = progress.done >= progress.total;
 
     return {
-      eyebrow: `${dates.greeting()}${settings().name ? `, ${settings().name}` : ''}`,
-      title: dates.formatJP(state.dateKey),
+      eyebrow: past() ? 'HOME' : `${dates.greeting()}${settings().name ? `, ${settings().name}` : ''}`,
+      dateNav: true,
       action: h`
         <div class="topbar-actions">
           <span class="today-progress ${allDone ? 'done' : ''}">
@@ -466,7 +481,7 @@
 
   function openWorkoutPicker() {
     AOS.sheet.choose(
-      '今日のメニュー',
+      `${dayWord()}のメニュー`,
       AOS.workouts.ORDER.map((id) => {
         const workout = AOS.workouts.get(id);
         return { id, title: workout.label, sub: workout.sub, active: id === state.workoutId };
@@ -474,12 +489,12 @@
       (id) => {
         AOS.plan.setForDate(state.dateKey, id).then(() => AOS.router.rerender());
       },
-      { subtitle: '今日だけの変更。曜日ごとの基本プランは設定から。' }
+      { subtitle: `${dayWord()}だけの変更。曜日ごとの基本プランは設定から。` }
     );
   }
 
   function startTraining() {
-    return AOS.screens.training.begin(state.workoutId).then(() => AOS.router.go('training'));
+    return AOS.screens.training.begin(state.workoutId, state.dateKey).then(() => AOS.router.go('training'));
   }
 
   const saveWeight = AOS.dom.debounce((value) => {
@@ -524,7 +539,7 @@
       else if (action === 'start') startTraining();
       else if (action === 'go-training') AOS.router.go('training');
       else if (action === 'go-body') AOS.router.go('body');
-      else if (action === 'log-volleyball') AOS.router.go('review').then(() => AOS.screens.review.openVolleyballForm());
+      else if (action === 'log-volleyball') AOS.router.go('review').then(() => AOS.screens.review.openVolleyballForm(state.dateKey));
       else if (action === 'toggle-exercises') {
         state.showExercises = !state.showExercises;
         AOS.router.rerender();
@@ -533,7 +548,7 @@
         AOS.router.rerender();
       } else if (action === 'swap-workout') {
         AOS.plan.setForDate(state.dateKey, target.dataset.workout)
-          .then(() => { toast('今日のメニューを変更しました'); return AOS.router.rerender(); });
+          .then(() => { toast(`${dayWord()}のメニューを変更しました`); return AOS.router.rerender(); });
       } else if (action === 'shorten') {
         AOS.store.update({ duration: 30 }).then(() => {
           toast('30分メニューにしました');

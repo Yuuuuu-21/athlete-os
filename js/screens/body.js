@@ -36,7 +36,7 @@
   // ---------- data ----------
 
   function load() {
-    state.dateKey = dates.today();
+    state.dateKey = AOS.store.viewDate();
 
     return Promise.all([
       AOS.stats.allBodyLogs(),
@@ -59,7 +59,11 @@
 
   function weightCard() {
     const series = AOS.stats.weightSeries(state.bodyLogs, dates.lastDays(state.range, state.dateKey));
-    const latest = AOS.stats.latestWeight(state.bodyLogs);
+    // Only fall back to an earlier weigh-in when looking at today; a past
+    // day with no entry should read as empty, not borrow another day's.
+    const latest = AOS.store.isViewingPast()
+      ? null
+      : AOS.stats.latestWeight(state.bodyLogs);
     const shown = state.weight !== '' ? state.weight : (latest ? latest.weight : '');
 
     const week = AOS.stats.weightSeries(state.bodyLogs, dates.lastDays(7, state.dateKey));
@@ -70,7 +74,7 @@
 
     return W.card({
       title: 'BODY WEIGHT',
-      action: h`<span class="card-title">${state.todayLog && state.todayLog.weight ? '今日 記録済み' : '今日 未記録'}</span>`,
+      action: h`<span class="card-title">${state.todayLog && state.todayLog.weight ? '記録済み' : '未記録'}</span>`,
       body: h`
         <div class="weight-display">
           <span class="weight-num">${shown === '' ? '—' : num(shown)}</span>
@@ -266,12 +270,12 @@
   function conditionCard() {
     const adjust = AOS.condition.evaluate(state.condition);
     return W.card({
-      title: "TODAY'S CONDITION",
+      title: AOS.store.isViewingPast() ? 'CONDITION' : "TODAY'S CONDITION",
       body: h`
         <button class="row" data-go-home>
           <span class="row-main">
             <span class="row-title">
-              ${adjust.complete ? `${adjust.level.title} · ${adjust.score} / 15` : '今朝の記録が未完了'}
+              ${adjust.complete ? `${adjust.level.title} · ${adjust.score} / 15` : 'コンディションが未記録'}
             </span>
             <span class="row-sub">
               ${adjust.complete
@@ -296,7 +300,7 @@
   }
 
   function topbar() {
-    return { eyebrow: 'BODY', title: '体の記録' };
+    return { eyebrow: 'BODY · 体の記録', dateNav: true };
   }
 
   const saveWeight = AOS.dom.debounce((value) => {
